@@ -92,7 +92,7 @@ const clusterMap=require('../cluster-map.js');let clusterBoard='block-beta\n col
 for(const n of Object.values(clusterMap.nodes))clusterBoard+=`${n.id}["${n.label||' '}"]\n`;
 for(const color of Object.keys(palettes)){const ids=Object.values(clusterMap.nodes).filter(n=>n.color===color).map(n=>n.id);if(ids.length)clusterBoard+='class '+ids.join(',')+' '+color+'\n';}
 save('cluster6',clusterBoard);
-console.log('已写入 16 组亮色 Mermaid 源图，含四芯片硬件与软件双流。');
+console.log('正在更新亮色 Mermaid 源图及对应硬件分区。');
 
 let software='block-beta\n columns 2\n IH["指令 flow"] DH["数据 flow"]\n';
 for(let i=0;i<12;i++)software+='space:2\nI'+i+'["指令步骤示意说明\n计划与同步等待"] D'+i+'["数据输入输出内容\n数据结果待写入"]\n';
@@ -109,3 +109,12 @@ const requestFlow=require('../request-flow.js');let requestSource='block-beta\n 
 requestFlow.groups.forEach((g,i)=>{requestSource+=`R${i}["${String(i+1).padStart(2,'0')}  ${g.title}"]\n`;});
 for(let i=0;i<7;i++)requestSource+=`R${i} --> R${i+1}\n`;
 requestSource+='class R0,R1,R7 host\nclass R2,R3,R4,R5,R6 mem\n';save('request10',requestSource);
+
+const groq3Map=require('../groq3-space.js').map;let groq3='block-beta\n columns 4\n';
+for(const n of Object.values(groq3Map.nodes))groq3+=`${n.id}["${n.label||' '}"]\n`;
+for(const color of Object.keys(palettes)){const ids=Object.values(groq3Map.nodes).filter(n=>n.color===color).map(n=>n.id);if(ids.length)groq3+='class '+ids.join(',')+' '+color+'\n';}
+save('groq3',groq3);
+
+const lpxMaps=require('../lpx-model.js').maps;let lpx='block-beta\n columns 16\n';
+for(const [level,map]of Object.entries(lpxMaps))for(const n of Object.values(map.boxes))lpx+=level+'_'+n.id+'["'+(n.label||' ')+'"]\nclass '+level+'_'+n.id+' '+n.color+'\n';
+save('lpx',lpx);

@@ -1,16 +1,25 @@
 {
-  "name": "groq-tsp-training-tools",
+  "name": "groq-tsp-visualizer-tools",
   "version": "1.0.0",
   "private": true,
-  "description": "Groq TSP 中文教学网页的离线图表生成与校验工具",
+  "description": "Groq TSP 可视化解析的离线图形生成与校验工具",
   "scripts": {
-    "build": "node hardware-sources.cjs && node build-hardware.cjs && node pack.cjs",
-    "pack": "node pack.cjs",
+    "build": "node hardware-sources.cjs && node build-hardware.cjs && node build-spatial.cjs && node pack.cjs",
+    "pack": "node build-spatial.cjs && node pack.cjs",
+    "build:spatial": "node build-spatial.cjs",
+    "build:tokens": "node build-token-samples.cjs",
+    "check:immersive": "node check-network.cjs && node check-immersive.cjs",
     "check": "node check-performance.cjs && node check-cluster.cjs && node check-operators.cjs && node check-playback.cjs && node check-workspace.cjs && node check-cycle.cjs && node check-request.cjs && node check-references.cjs",
-    "check:references": "node check-references.cjs"
+    "check:references": "node check-references.cjs",
+    "check:spatial": "node check-spatial.cjs",
+    "check:groq3": "node check-lpx-model.cjs && node check-groq3.cjs"
   },
   "devDependencies": {
+    "@huggingface/jinja": "0.5.10",
+    "@huggingface/tokenizers": "0.2.0",
+    "esbuild": "0.28.2",
     "mermaid": "11.17.2",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "three": "0.185.1"
   }
 }

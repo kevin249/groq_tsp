@@ -5,6 +5,8 @@ const root=path.resolve(__dirname,'..');
 const A=require('../hardware-atlas-map.js');const atlasLayout=A.layout(A.context());
 const clusterLayout=require('../cluster-map.js');
 const cycleLayout=require('../cycle-map.js');
+const groq3Layout=require('../groq3-space.js').map;
+const lpxLayout=require('../lpx-model.js').maps;
 (async()=>{
  const exe=[process.env.GROQ_RENDER_BROWSER,'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe','C:/Program Files/Google/Chrome/Application/chrome.exe'].filter(Boolean).find(fs.existsSync);
  const browser=await chromium.launch({headless:true,...(exe?{executablePath:exe}:{})});
@@ -15,16 +17,23 @@ const cycleLayout=require('../cycle-map.js');
   const output={};
   for(const name of fs.readdirSync(path.join(root,'hardware')).filter(n=>n.endsWith('.mmd')).sort()){
    const key=path.basename(name,'.mmd');const source=fs.readFileSync(path.join(root,'hardware',name),'utf8');
-   const rendered=await page.evaluate(async({key,source,atlasLayout,clusterLayout,cycleLayout})=>{
+   const rendered=await page.evaluate(async({key,source,atlasLayout,clusterLayout,cycleLayout,groq3Layout,lpxLayout})=>{
     mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',fontFamily:'Microsoft YaHei, Segoe UI, sans-serif',themeVariables:{fontSize:key==='die'?'8px':key==='request10'?'18px':'15px',primaryColor:'#edf4f9',primaryTextColor:'#203c50',primaryBorderColor:'#8ba4b6',lineColor:'#607f97',background:'#ffffff'},block:{padding:key==='die'?2:key==='request10'?5:10},flowchart:{htmlLabels:false},htmlLabels:false});
     const{svg}=await mermaid.render('hw_'+key,source);document.getElementById('render').innerHTML=svg;
     const el=document.querySelector('#render svg');
+    if(key==='lpx'){
+     for(const n of el.querySelectorAll('g.node')){const id=n.id.replace(/^hw_lpx-/,''),split=id.indexOf('_'),level=id.slice(0,split),local=id.slice(split+1),b=lpxLayout[level].boxes[local];if(!b)throw Error('缺少 LPX 分区 '+id);const r=n.querySelector('rect');r.setAttribute('x',-b.w/2);r.setAttribute('y',-b.h/2);r.setAttribute('width',b.w);r.setAttribute('height',b.h);r.setAttribute('rx',2);n.querySelector('.label')?.setAttribute('transform','translate(0,0)');const t=n.querySelector('text');t.textContent=b.label;t.setAttribute('x',0);t.setAttribute('y',5);t.setAttribute('text-anchor','middle');}
+    }
+    if(key==='groq3'){
+     for(const n of el.querySelectorAll('g.node')){const id=n.id.replace(/^hw_groq3-/,''),b=groq3Layout.nodes[id];if(!b)throw Error('缺少 Groq 3 原图区域 '+id);n.setAttribute('transform',`translate(${b.x+b.w/2},${b.y+b.h/2})`);n.dataset.kind=b.kind;const r=n.querySelector('rect');r.setAttribute('x',-b.w/2);r.setAttribute('y',-b.h/2);r.setAttribute('width',b.w);r.setAttribute('height',b.h);r.setAttribute('rx',1);n.querySelector('.label')?.setAttribute('transform','translate(0,0)');const t=n.querySelector('text');t.textContent=b.label;t.setAttribute('x',0);t.setAttribute('y',5);t.setAttribute('text-anchor','middle');t.style.fontSize='22px';}
+     el.setAttribute('viewBox',`0 0 ${groq3Layout.width} ${groq3Layout.height}`);el.setAttribute('style','max-width:100%;background:transparent');
+    }
     if(key==='cycle9'){
-     for(const n of el.querySelectorAll('g.node')){const id=n.id.replace(/^hw_cycle9-/,''),b=cycleLayout.nodes[id];if(!b)throw Error('缺少逐周期硬件 '+id);n.setAttribute('transform',`translate(${b.x+b.w/2},${b.y+b.h/2})`);n.dataset.owner=b.owner;n.dataset.kind=b.kind;const r=n.querySelector('rect');r.setAttribute('x',-b.w/2);r.setAttribute('y',-b.h/2);r.setAttribute('width',b.w);r.setAttribute('height',b.h);r.setAttribute('rx',b.kind==='frame'?7:3);n.querySelector('.label')?.setAttribute('transform','translate(0,0)');const t=n.querySelector('text');t.textContent=b.kind==='frame'?'':b.label;t.setAttribute('x',0);t.setAttribute('y',5);t.setAttribute('text-anchor','middle');t.style.fontSize=(b.kind==='cell'||b.kind==='register'?'14':b.kind==='caption'?'15':'17')+'px';}
-     el.setAttribute('viewBox',`0 0 ${cycleLayout.width} ${cycleLayout.height}`);el.setAttribute('style','max-width:100%;background:transparent');
+     for(const n of el.querySelectorAll('g.node')){const id=n.id.replace(/^hw_cycle9-/,''),b=cycleLayout.nodes[id];if(!b)throw Error('缺少逐周期硬件 '+id);n.setAttribute('transform',`translate(${b.x+b.w/2},${b.y+b.h/2})`);n.dataset.owner=b.owner;n.dataset.kind=b.kind;const r=n.querySelector('rect');r.setAttribute('x',-b.w/2);r.setAttribute('y',-b.h/2);r.setAttribute('width',b.w);r.setAttribute('height',b.h);r.setAttribute('rx',b.kind==='frame'?7:3);n.querySelector('.label')?.setAttribute('transform','translate(0,0)');const t=n.querySelector('text');t.textContent=b.kind==='frame'?'':b.label;t.setAttribute('x',0);t.setAttribute('y',5);t.setAttribute('text-anchor','middle');t.style.fontSize=(b.kind==='cell'||b.kind==='register'?'14':['sl-label','sl-cell'].includes(b.kind)?'13':b.kind==='caption'?'15':'17')+'px';}
+     el.setAttribute('viewBox',`0 0 ${cycleLayout.focus.all.w} ${cycleLayout.focus.all.h}`);el.setAttribute('style','max-width:100%;background:transparent');
     }
     if(key==='cluster6'){
-     for(const n of el.querySelectorAll('g.node')){const id=n.id.replace(/^hw_cluster6-/,''),b=clusterLayout.nodes[id];if(!b)throw Error('缺少多片硬件 '+id);n.setAttribute('transform',`translate(${b.x+b.w/2},${b.y+b.h/2})`);n.dataset.owner=b.owner;n.dataset.kind=b.kind;n.dataset.color=b.color;const r=n.querySelector('rect');r.setAttribute('x',-b.w/2);r.setAttribute('y',-b.h/2);r.setAttribute('width',b.w);r.setAttribute('height',b.h);r.setAttribute('rx',b.kind==='chip'?8:3);n.querySelector('.label')?.setAttribute('transform','translate(0,0)');const t=n.querySelector('text');t.textContent=['frame','chip'].includes(b.kind)?'':b.label;t.setAttribute('x',0);t.setAttribute('y',5);t.setAttribute('text-anchor','middle');t.style.fontSize=(b.kind==='slice'?'11':b.kind==='tile'?'9':'14')+'px';}
+     for(const n of el.querySelectorAll('g.node')){const id=n.id.replace(/^hw_cluster6-/,''),b=clusterLayout.nodes[id];if(!b)throw Error('缺少多片硬件 '+id);n.setAttribute('transform',`translate(${b.x+b.w/2},${b.y+b.h/2})`);n.dataset.owner=b.owner;n.dataset.kind=b.kind;n.dataset.color=b.color;const r=n.querySelector('rect');r.setAttribute('x',-b.w/2);r.setAttribute('y',-b.h/2);r.setAttribute('width',b.w);r.setAttribute('height',b.h);r.setAttribute('rx',b.kind==='chip'?8:3);n.querySelector('.label')?.setAttribute('transform','translate(0,0)');const t=n.querySelector('text');t.textContent=['frame','chip'].includes(b.kind)?'':b.label;t.setAttribute('x',0);t.setAttribute('y',b.kind==='slice'?-b.h/2+23:5);t.setAttribute('text-anchor','middle');t.style.fontSize=(b.kind==='slice'||b.kind==='sl-label'?'11':b.kind==='tile'?'9':'14')+'px';}
      el.setAttribute('viewBox',`0 0 ${clusterLayout.width} ${clusterLayout.height}`);el.setAttribute('style','max-width:100%;background:transparent');
     }
     if(key==='atlas'){
@@ -80,6 +89,11 @@ const cycleLayout=require('../cycle-map.js');
       }
       place('C2C',420,447,808,30,'C2C · 编译安排的片间传输');el.setAttribute('viewBox','0 0 840 475');
     }
+    // Mermaid 的调色板作为默认外观；移除强制优先级，让运行时指令与数据状态着色生效。
+    if(['cycle9','atlas','cluster6','groq3','lpx'].includes(key)){
+     for(const style of el.querySelectorAll('style'))style.textContent=style.textContent.replace(/!important/g,'');
+     for(const node of el.querySelectorAll('[style]'))node.setAttribute('style',node.getAttribute('style').replace(/!important/g,''));
+    }
     const box=el.viewBox.baseVal;
     const nodes={};
     for(const node of el.querySelectorAll('g.node')){
@@ -90,7 +104,7 @@ const cycleLayout=require('../cycle-map.js');
       nodes[id]={x:origin.x,y:origin.y,width:b.width*transform.a,height:b.height*transform.d};
     }
     return{svg:el.outerHTML,viewBox:{x:box.x,y:box.y,width:box.width,height:box.height},nodes};
-   },{key,source,atlasLayout:key==='atlas'?atlasLayout:null,clusterLayout:key==='cluster6'?{nodes:clusterLayout.nodes,width:clusterLayout.width,height:clusterLayout.height}:null,cycleLayout:key==='cycle9'?cycleLayout:null});
+   },{key,source,atlasLayout:key==='atlas'?atlasLayout:null,clusterLayout:key==='cluster6'?{nodes:clusterLayout.nodes,width:clusterLayout.width,height:clusterLayout.height}:null,cycleLayout:key==='cycle9'?{nodes:cycleLayout.nodes,width:cycleLayout.width,height:cycleLayout.height,focus:cycleLayout.focus}:null,groq3Layout:key==='groq3'?groq3Layout:null,lpxLayout:key==='lpx'?lpxLayout:null});
    output[key]=rendered;fs.writeFileSync(path.join(root,'hardware',key+'.svg'),rendered.svg,'utf8');
    console.log(key,rendered.viewBox,'单元',Object.keys(rendered.nodes).length,'示例',Object.keys(rendered.nodes).slice(0,6));
   }

@@ -1,0 +1,25 @@
+flowchart TB
+  INPUT["18 个输入 Token · 正文 6 个"] --> EMBED["词嵌入 D=2560 → 复制为四路残差 H=10240"]
+  EMBED --> PLE{"当前第 2 层？"}
+  PLE -->|"是"| NGRAM["2 / 3 gram 各 8 hash 头<br/>查表 → PLE 门控 / 短卷积 → 注入残差"]
+  PLE -->|"否"| READ["Attention 门控读出 · 10240 → 320 → 10240 → 混合为 2560"]
+  NGRAM --> READ
+  READ --> TYPE{"当前层类型"}
+  TYPE -->|"3 / 4 的层"| DELTA["Gated DeltaNet<br/>QKV 卷积 → 48 个递推状态 → 门控输出"]
+  TYPE -->|"每第 4 层"| QSA["QSA / Gated Attention<br/>独立 Indexer 4Q / 1K → 4-Token 微块选择<br/>主 Attention 24Q / 2KV → 稀疏因果掩码 → 输出门控"]
+  DELTA --> WRITE["Attention 输出 · 门控写回四路残差"]
+  QSA --> WRITE
+  WRITE --> MREAD["MoE 独立门控读出 → 2560"]
+  MREAD --> ROUTER["512 个路由分数 → Softmax → Top-10"]
+  MREAD --> SHARED["共享专家 SwiGLU · 640<br/>独立 sigmoid 门控"]
+  ROUTER --> EXPERTS["10 个命中专家 · 各 2560 → 640 → 2560"]
+  EXPERTS --> SUM["Σ 路由权重 × 专家输出 + 共享输出"]
+  SHARED --> SUM
+  SUM --> MWRITE["MoE 输出 · 门控写回四路残差"]
+  MWRITE --> LOOP{"已完成 48 层？"}
+  LOOP -->|"下一层"| PLE
+  LOOP -->|"是"| FINAL["最终四路门控混合 → 2560<br/>LM Head 248320 → 采样 / 反分词"]
+  style NGRAM fill:#eee6dc,stroke:#b5a48c
+  style EXPERTS fill:#e6e5ca,stroke:#a9a672
+  style SHARED fill:#e6e5ca,stroke:#a9a672
+  style QSA fill:#dbe9ec,stroke:#87a1ac

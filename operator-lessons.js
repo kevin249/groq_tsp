@@ -14,7 +14,7 @@
  const fmt=n=>Number.isFinite(n)?String(Math.round(n*1000)/1000):n===-Infinity?'−∞':String(n),list=a=>'['+a.map(fmt).join(', ')+']';
  function build(m,key,chipId=m.group[0],raw={}){
   const op=ops.find(x=>x.id===key);if(!op)throw Error('未知的软件算子');const family=families.find(f=>f.id===op.family),ch=m.chips[chipId],p={...defaults,...raw};
-  for(const [k,lo,hi]of [['sxmGBs',1,100000],['clockGHz',.01,10],['waitCycles',0,10000],['repeat',1,64]]){p[k]=Number(p[k]);if(!Number.isFinite(p[k])||p[k]<lo||p[k]>hi||(['waitCycles','repeat'].includes(k)&&!Number.isInteger(p[k])))throw Error('请检查 '+k+' 的教学参数');}
+  for(const [k,lo,hi]of [['sxmGBs',1,100000],['clockGHz',.01,10],['waitCycles',0,10000],['repeat',1,64]]){p[k]=Number(p[k]);if(!Number.isFinite(p[k])||p[k]<lo||p[k]>hi||(['waitCycles','repeat'].includes(k)&&!Number.isInteger(p[k])))throw Error('请检查 '+k+' 的示例参数');}
   const pre='C'+chipId+'_',steps=[],x=[1,2,3,4];let result=[],worked=0,bytes=0,vector=0,flops=0,compute=0,transport=0,clock=0,fixed=m.p.operatorUs/1000,formulas=[],shape='',rowLabels=['输入','输出'],description='独立四元素数值例子，与右侧完整模型形状分开。';
   const mark=(a,b,label,tone='data',delay=0)=>({from:pre+a,to:pre+b,label,tone,delay});
   function add(title,instruction,data,focus,packets=[],values=[],writes={}){steps.push({title,explain:data,instruction,dataLabel:values.length?list(values):data.slice(0,13),focus:focus.map(k=>pre+k),packets,state:{},values:values.slice(),writes});}

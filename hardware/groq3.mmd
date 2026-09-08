@@ -1,0 +1,37 @@
+block-beta
+ columns 4
+PACKAGE[" "]
+DIE[" "]
+MXM_N["MXM"]
+SXM_N["SXM"]
+MEM_N["MEM"]
+VXM["VXM"]
+MEM_S["MEM"]
+SXM_S["SXM"]
+MXM_S["MXM"]
+ICU["ICU"]
+C2C_NW["C2C"]
+C2C_SW["C2C"]
+C2C_NE["C2C"]
+C2C_SE["C2C"]
+CCU["CCU / GPIO"]
+GPIO["GPIO"]
+class MEM_N,MEM_S mem
+class MXM_N,MXM_S mxm
+class VXM vxm
+class SXM_N,SXM_S sxm
+class ICU,CCU icu
+class C2C_NW,C2C_SW,C2C_NE,C2C_SE,GPIO port
+class DIE frame
+class PACKAGE host
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

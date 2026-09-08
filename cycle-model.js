@@ -1,4 +1,4 @@
-/* UTF-8 · 确定性逐周期教学模型。数值、有效位与写回只在整数时钟边沿改变。 */
+/* UTF-8 · 确定性逐周期示例模型。数值、有效位与写回只在整数时钟边沿改变。 */
 (function(root){
  'use strict';
  const defaults={ghz:.9,hops:3,read:2,write:1,vector:2,shuffle:2,install:2,matrix:4,skew:1};
@@ -16,7 +16,7 @@
   {id:'control',family:'control',name:'ICU · Sync / Notify',formula:'Sync → Notify → 后续 Read',note:'一个 ICU 等待通知，另一个 ICU 在预定周期通知；演示静态计划，未加入动态 scoreboard。'}
  ];
  const f=Math.fround,vec=a=>a.map(f),copy=a=>a.slice(),fmt=v=>!Number.isFinite(v)?String(v):Number(v.toPrecision(5)).toString();
- function parameters(raw={}){const p={...defaults,...raw};for(const [k,v]of Object.entries(p)){if(!Number.isFinite(Number(v)))throw Error(k+' 必须是有限数值');p[k]=Number(v);}if(p.ghz<.1||p.ghz>3)throw Error('时钟范围为 0.1—3 GHz');for(const k of ['hops','read','write','vector','shuffle','install','matrix','skew']){if(!Number.isInteger(p[k]))throw Error('周期参数必须为整数');}if(p.hops<1||p.hops>6)throw Error('寄存器距离范围为 1—6 跳');if(p.skew<0||p.skew>2)throw Error('d_skew 范围为 0—2 拍');for(const k of ['read','write','vector','shuffle','install'])if(p[k]<1||p[k]>8)throw Error('功能延迟范围为 1—8 拍');if(p.matrix<4||p.matrix>16)throw Error('四项 MAC 窗口的教学延迟范围为 4—16 拍');return p;}
+ function parameters(raw={}){const p={...defaults,...raw};for(const [k,v]of Object.entries(p)){if(!Number.isFinite(Number(v)))throw Error(k+' 必须是有限数值');p[k]=Number(v);}if(p.ghz<.1||p.ghz>3)throw Error('时钟范围为 0.1—3 GHz');for(const k of ['hops','read','write','vector','shuffle','install','matrix','skew']){if(!Number.isInteger(p[k]))throw Error('周期参数必须为整数');}if(p.hops<1||p.hops>6)throw Error('寄存器距离范围为 1—6 跳');if(p.skew<0||p.skew>2)throw Error('d_skew 范围为 0—2 拍');for(const k of ['read','write','vector','shuffle','install'])if(p[k]<1||p[k]>8)throw Error('功能延迟范围为 1—8 拍');if(p.matrix<4||p.matrix>16)throw Error('四项 MAC 窗口的示例延迟范围为 4—16 拍');return p;}
  function build(key='q',raw={}){
   const p=parameters(raw),lesson=lessons.find(x=>x.id===key);if(!lesson)throw Error('未知逐周期课程');
   const program=[],routes=[],memory=[],stages=[],occupied=new Set(),x=vec(['rope','silu'].includes(key)?[1,-2,3,-4]:[1,2,3,4]);let serial=0,address=32,stageName='准备',ready=0;
@@ -72,7 +72,7 @@
   output.values=copy(result.values);output.alias=result.id;const end=program.find(i=>i.id===result.writer)?.ready??ready-1;
   program.sort((a,b)=>a.issue-b.issue||units.indexOf(a.unit)-units.indexOf(b.unit));
   const physicalProgram=program.flatMap(i=>['read','write'].includes(i.kind)?Array.from({length:i.planes},(_,plane)=>({id:i.id+'p'+plane,parent:i.id,unit:i.unit+plane,plane,op:(i.kind==='read'?'Read':'Write')+' a'+i.address+', 字节流 '+plane,issue:i.issue+plane,consume:i.consume+plane,ready:i.consume+plane+i.func,latency:i.func,kind:i.kind})):['MEM_A','MEM_B'].includes(i.unit)?Array.from({length:4},(_,plane)=>({...i,id:i.id+'p'+plane,parent:i.id,unit:i.unit+plane,plane})): [{...i,parent:i.id}] );
-  const model={version:9,kind:'逐周期教学计划，非真实编译器 trace',p,lesson,program,physicalProgram,routes,memory,stages,input:copy(x),expected:copy(result.values),output:result.id,firstEnd:end,lastEnd:end+19,superlanes:20,units:copy(units),dtype:lesson.family==='matrix'?'FP16 输入 SG2 / FP32 输出 SG4 · 显示前 4 / 16 lane':'FP32 的 SG4 字节流 · 显示前 4 / 16 lane',scope:'每个 SL 显示 16 个逻辑 lane 中的前 4 项，其余 lane 后续数值不模拟、不参加四项归约；20 个 SL 独立重复此例，不等于完整 Q 头。'};
+  const model={version:9,kind:'逐周期示例计划，非真实编译器 trace',p,lesson,program,physicalProgram,routes,memory,stages,input:copy(x),expected:copy(result.values),output:result.id,firstEnd:end,lastEnd:end+19,superlanes:20,units:copy(units),dtype:lesson.family==='matrix'?'FP16 输入 SG2 / FP32 输出 SG4 · 显示前 4 / 16 lane':'FP32 的 SG4 字节流 · 显示前 4 / 16 lane',scope:'每个 SL 显示 16 个逻辑 lane 中的前 4 项，其余 lane 后续数值不模拟、不参加四项归约；20 个 SL 独立重复此例，不等于完整 Q 头。'};
   const violations=validate(model);if(violations.length)throw Error(violations.join('；'));return model;
  }
  function validate(m){const errors=[],byId=Object.fromEntries(m.program.map(i=>[i.id,i])),slots=new Set();for(const i of m.physicalProgram){const slot=i.unit+':'+i.issue;if(slots.has(slot))errors.push('同 ICU 同拍冲突 '+slot);slots.add(slot);}for(const i of m.program){for(const d of i.deps){const producer=byId[d.id];if(!producer||d.arrival<producer.ready||i.consume<d.arrival)errors.push('操作数未就绪 '+i.id);const input=i.inputs.find(x=>x.route&&m.routes.find(r=>r.id===x.route)?.producer===d.id);if(input&&i.consume!==d.arrival)errors.push('流已离开消费位置 '+i.id);}if(i.kind==='read'){const mem=m.memory.find(x=>x.id===i.memory);if(mem.writer&&byId[mem.writer].ready>i.consume)errors.push('SRAM 尚未写回 '+i.id);}}return errors;}

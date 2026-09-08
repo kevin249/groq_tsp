@@ -33,7 +33,7 @@
    const s={flops:0,vectorOps:0,traffic:[],formulas:[],...v};s.memoryBytes=s.traffic.reduce((a,x)=>a+x.bytes,0);s.computeMs=s.flops/effective.matrix*1000+s.vectorOps/effective.vector*1000;s.memoryMs=s.memoryBytes/effective.memory*1000;s.fixedMs=s.fixedMs??p.operatorUs/1000;s.low=s.low??Math.max(s.computeMs,s.memoryMs)+s.fixedMs;s.high=s.high??s.computeMs+s.memoryMs+s.fixedMs;s.intensity=s.memoryBytes?s.flops/s.memoryBytes:0;s.bound=s.computeMs>=s.memoryMs?(s.vectorOps?'向量计算':'矩阵计算'):'片上搬运';if(!s.flops&&!s.vectorOps&&!s.memoryBytes)s.bound=s.bound==='矩阵计算'?'固定开销':s.bound;
    if(s.fixedMs>Math.max(s.computeMs,s.memoryMs))s.bound='设定固定开销';if(v.bound)s.bound=v.bound;steps.push(s);return s;
   }
-  const netPayload=new TextEncoder().encode(JSON.stringify({model:'教学模型',messages:[{role:'user',content:p.prompt}],stream:true})).length;
+  const netPayload=new TextEncoder().encode(JSON.stringify({model:'示例模型',messages:[{role:'user',content:p.prompt}],stream:true})).length;
   const requestBytes=p.mode==='prefill'?netPayload*B:0,inputBytes=B*T*4,logitBytes=B*V*4;
   const network=(amount,propagation=0)=>amount/effective.network*1000+propagation;
   const cpuMs=p.mode==='prefill'?p.cpuFixedMs+B*S/p.cpuTokensPerSec*1000:0;

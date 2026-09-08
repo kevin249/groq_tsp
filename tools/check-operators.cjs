@@ -4,10 +4,10 @@ const {writeReport}=require('./report.cjs');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const P=require('../performance-model.js'),C=require('../cluster-model.js'),L=require('../cluster-lessons.js'),O=require('../operator-lessons.js'),M=require('../cluster-map.js'),F=require('../software-flow.js'),root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 const sandbox={window:{}};vm.runInNewContext(read('hardware-diagrams.js'),sandbox);const G=sandbox.window.HARDWARE_SVGS,logs=[],near=(a,b)=>assert.ok(Math.abs(a-b)<=1e-9*Math.max(1,Math.abs(b)),a+' ≠ '+b),check=(s,fn)=>{fn();logs.push(s);console.log('通过：'+s);};let phases=0;
-check('每片中央只有一个 VXM 区域，MAC、ALU、归约和程序块均在所属区域内',()=>{
+check('每片中央只有一个 VXM，悬浮运算值与程序状态明确归属固定硬件',()=>{
  const contains=(a,b)=>b.x>=a.x&&b.y>=a.y&&b.x+b.w<=a.x+a.w&&b.y+b.h<=a.y+a.h;
  for(let i=0;i<4;i++){const prefix='C'+i+'_';assert.equal(Object.values(M.nodes).filter(n=>n.owner==='C'+i&&n.kind==='slice'&&n.color==='vxm').length,1);assert.equal(Object.values(M.nodes).filter(n=>n.owner==='C'+i&&n.kind==='slice'&&n.color==='mxm').length,4);
-  for(const [parent,child]of [['MW0','MAC'],['VX','ALU'],['VX','SUM'],['MEMW','W'],['MEMW','INPUT'],['MEMW','PROG'],['MEME','KV'],['MEME','KVNEW']])assert.ok(contains(M.nodes[prefix+parent],M.nodes[prefix+child]),prefix+child+' 未在 '+parent+' 内');
+  for(const [parent,child]of [['MW0','MAC'],['VX','ALU'],['VX','SUM'],['MEMW','W'],['MEMW','INPUT'],['MEMW','PROG'],['MEME','KV'],['MEME','KVNEW']]){assert.equal(M.nodes[prefix+child].anchor,prefix+parent);assert.notEqual(M.nodes[prefix+child].layer,'hardware');assert.equal(M.nodes[prefix+parent].layer,'hardware');};
   assert.ok(M.nodes[prefix+'PROG'].y>=M.nodes[prefix+'W'].y+M.nodes[prefix+'W'].h);assert.ok(M.nodes[prefix+'PORTW'].x+M.nodes[prefix+'PORTW'].w<M.nodes[prefix+'TX'].x);
  }
 });
@@ -43,7 +43,7 @@ check('三列布局、软件入口顺序与长流水线的 Mermaid 节点完整'
  const html=read('index.html'),scripts=[...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(x=>x[1]);assert.ok(scripts.indexOf('software-flow.js')<scripts.indexOf('performance-app.js'));assert.ok(scripts.indexOf('operator-lessons.js')<scripts.indexOf('cluster-app.js'));
  assert.ok(read('flow-layout.css').includes('grid-template-columns:280px minmax(0,1fr) 294px'));for(const main of ['cluster-main','lab-main']){const start=html.indexOf('id="'+main+'"'),tail=html.indexOf('</main>',start),body=html.slice(start,tail);assert.ok(body.indexOf('class="software-pane"')<body.indexOf('class="lab-left"'));assert.ok(body.indexOf('class="lab-left"')<body.indexOf('class="calculation-pane"'));}
  for(let i=0;i<F.slots;i++)for(const side of ['I','D'])assert.ok(G.software7.nodes[side+i]);const m=C.build({}, {strategy:'pipeline',inFlight:8});assert.ok(L.phases(m,'overlap').length<=F.slots);
- const decoder=new TextDecoder('utf-8',{fatal:true});for(const file of ['operator-lessons.js','software-flow.js','flow-layout.css','docs/教学方案.md','README.md','docs/设计说明.md']){const text=decoder.decode(fs.readFileSync(path.join(root,file)));assert.ok(!text.includes('\uFFFD'));if(file.endsWith('.js'))new vm.Script(text,{filename:file});}
+ const decoder=new TextDecoder('utf-8',{fatal:true});for(const file of ['operator-lessons.js','software-flow.js','flow-layout.css','docs/解析方案.md','README.md','docs/设计说明.md']){const text=decoder.decode(fs.readFileSync(path.join(root,file)));assert.ok(!text.includes('\uFFFD'));if(file.endsWith('.js'))new vm.Script(text,{filename:file});}
 });
-writeReport('算子与硬件.md','# 算子与硬件归属检查报告\n\n'+logs.map(s=>'- '+s+'。').join('\n')+`\n\n共 ${logs.length} 组分类与结构检查，涵盖 ${phases} 个算子分镜；六类共 30 个独立操作，四颗芯片、两种推理模式。完整请求和单片数值另由既有检查覆盖，应用启动和播放见 [动画播放](动画播放.md)。\n\n所有功能图与双流图由 Mermaid 生成。本次验证覆盖源文件结构、物理包含关系、数值、成本和程序播放；未进行教学网页的浏览器点击、截图或视觉回归。事实依据引用 ISCA 2020、Hot Chips 34 与 ASAP 2022 的网上原文；自动化检查验证引用形式，不验证站点实时可用性。\n`);
+writeReport('算子与硬件.md','# 算子与硬件归属检查报告\n\n'+logs.map(s=>'- '+s+'。').join('\n')+`\n\n共 ${logs.length} 组分类与结构检查，涵盖 ${phases} 个算子分镜；六类共 30 个独立操作，四颗芯片、两种推理模式。完整请求和单片数值另由既有检查覆盖，应用启动和播放见 [动画播放](动画播放.md)。\n\n所有功能图与双流图由 Mermaid 生成。本次验证覆盖源文件结构、物理包含关系、数值、成本和程序播放；未进行交互网页的浏览器点击、截图或视觉回归。事实依据引用 ISCA 2020、Hot Chips 34 与 ASAP 2022 的网上原文；自动化检查验证引用形式，不验证站点实时可用性。\n`);
 console.log('全部 '+logs.length+' 组分类检查通过。');

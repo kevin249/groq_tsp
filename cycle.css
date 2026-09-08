@@ -14,3 +14,9 @@ body.light #cycle-controls{gap:8px}#cycle-range{min-width:70px;flex:1;accent-col
 @media(prefers-reduced-motion:reduce){.cycle-canvas .cycle-pulse>rect{animation:none}.cycle-canvas .node rect{transition:none}}
 
 #cycle-main .operation-heading{flex:none;min-height:44px}#cycle-main .execution-readout{flex:none}#cycle-main .live-time>small{display:block}#cycle-main .live-time>small:last-child{margin-top:5px}
+
+/* 同一 SL 贯穿所有切片；紫色边框和数据底色可同时存在。 */
+.cycle-canvas .node[data-kind=sl-cell]>rect{fill-opacity:.55;stroke:#d7e0e8!important}
+.cycle-canvas .cycle-row-selected>rect{stroke:#55769a!important;stroke-width:2px!important;fill-opacity:1}
+.cycle-canvas .node[data-kind=sl-cell].cycle-instruction>rect{stroke:#9363bd!important;stroke-width:2.5px!important;fill-opacity:1}
+.cycle-canvas .node[data-kind=sl-cell].cycle-data-valid>rect,.cycle-canvas .node[data-kind=sl-cell].cycle-working>rect,.cycle-canvas .node[data-kind=sl-cell].cycle-write>rect{fill-opacity:1}

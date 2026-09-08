@@ -9,6 +9,9 @@
  add('PCIE','BOARD','PCIe 主机接口',34,711,220,30,'port','port');add('DMA','BOARD','I/O 模块 · DMA',264,711,230,30,'port','port');add('SOUTH','BOARD','C2C · 片间接口',504,711,684,30,'port','port');
  add('BUS','BOARD','横向流寄存器 · 所选 Superlane 的通道展开',34,632,1154,28,'bus','stream');
  for(let l=0;l<4;l++)add('BRIDGE'+l,'BOARD','中间流寄存器 L'+l,0,635+l*6,12,5,'bridge','stream');
+ const slY=sl=>166+(19-sl)*22.5;
+ add('SL_HEAD','BOARD','SL',34,132,48,24,'sl-label','icu');
+ for(let sl=0;sl<20;sl++){add('SL'+sl,'BOARD','SL '+sl,34,slY(sl),48,17,'sl-label','icu');specs['SL'+sl].sl=sl;}
  for(const[z,name,color]of zones){
   add(z,z,name,0,92,100,530,'region',color);add(z+'HEAD',z,name,0,100,100,27,'heading',color);
   add(z+'LOC',z,'所选切片 / Superlane',0,132,100,24,'location',color);
@@ -29,7 +32,7 @@
    for(let l=0;l<4;l++)cell('R'+l,'读锁存 '+l,l*87,357,81,34,'stream');
    cell('WRITE','写入缓冲',0,405,168,34,'stream');cell('WEIGHTS','权重存储块',180,405,168,34);
   }else if(color==='mxm'){
-   cell('BUFFER','权重缓冲',0,0,388,34);cell('IDENTITY','一个 MAC 子阵列 · 4×4 教学展开',0,42,388,27);
+   cell('BUFFER','权重缓冲',0,0,388,34);cell('IDENTITY','一个 MAC 子阵列 · 4×4 示意展开',0,42,388,27);
    for(let r=0;r<4;r++){
     cell('X'+r,'激活 x'+r,320,80+r*62,68,54,'stream');
     for(let c=0;c<4;c++)cell('M'+r+c,'MAC '+r+','+c,c*80,80+r*62,74,54);
@@ -77,8 +80,8 @@
  function layout(ctx){
   const weights={};for(const[z,,k]of zones)weights[z]=ctx.detail.size?(k==='mem'?.6:.42):(k==='mem'?2.3:k==='vxm'?1.7:k==='sxm'?.72:1.04);
   for(const z of ctx.detail)weights[z]=ctx.detail.size===1?9:ctx.detail.size===2?(z===ctx.zone?7:4):z==='VX'?3.5:z===ctx.mem?5:4.5;
-  const sum=Object.values(weights).reduce((a,b)=>a+b,0),out={},boxes={};let left=34;
-  for(const[z]of zones){const w=weights[z]/sum*1090;boxes[z]={x:left,w};left+=w+8;}
+  const sum=Object.values(weights).reduce((a,b)=>a+b,0),out={},boxes={};let left=92;
+  for(const[z]of zones){const w=weights[z]/sum*1032;boxes[z]={x:left,w};left+=w+8;}
   for(const[id,s]of Object.entries(specs)){
    if(s.kind==='bridge'){const mem=boxes[ctx.mem],vx=boxes.VX;out[id]={...s,x:(mem.x+mem.w/2+vx.x+vx.w/2)/2-6,visible:true};continue;}
    if(!boxes[s.owner]){out[id]={...s,visible:true};continue;}
@@ -91,7 +94,7 @@
    else if(s.kind==='circuit'){x=b.x+b.w-338;visible=active&&Boolean(ctx.mac)&&s.owner===ctx.matrix;}
    else if(s.kind==='tile'){
     const m=id.match(/R(\d+)(?:C(\d+))?$/),r=Number(m[1]),col=Number(m[2]||0),cols=s.owner.startsWith('MEM')?8:1;
-    const span=active?20:b.w-10;x=b.x+5+col*span/cols;y=166+(19-r)*22.5;w=Math.max(1,span/cols-1.5);h=17;
+    const span=active?20:b.w-10;x=b.x+5+col*span/cols;y=slY(r);w=Math.max(1,span/cols-1.5);h=17;
    }else if(s.kind==='detail'){
     const nativeWidth=group(s.owner)==='mem'?354:group(s.owner)==='mxm'?390:group(s.owner)==='vxm'?320:295;
     const internal=Boolean(ctx.mac)&&s.owner===ctx.matrix;
@@ -146,5 +149,5 @@
   if(s.owner==='BOARD')return'TSP 0 / '+s.label;
   const name=zones.find(z=>z[0]===s.owner)?.[1]||s.owner;return`TSP 0 / ${name} / 示意切片 ${ctx.slice} / SL ${String(ctx.sl).padStart(2,'0')} / ${s.label}`;
  }
- const api={zones,specs,defaults,group,context,layout,resolve,owner,address};root.HARDWARE_ATLAS_MAP=api;if(typeof module!=='undefined')module.exports=api;
+ const api={zones,specs,slY,defaults,group,context,layout,resolve,owner,address};root.HARDWARE_ATLAS_MAP=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

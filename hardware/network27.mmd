@@ -1,0 +1,17 @@
+flowchart TB
+  INPUT["18 个输入 Token · 正文 6 个"] --> EMBED["词嵌入 · 248320 × 5120"]
+  EMBED --> N1["Attention 前 RMSNorm"]
+  N1 --> TYPE{"当前层类型"}
+  TYPE -->|"3 / 4 的层"| DELTA["Gated DeltaNet<br/>QKV 投影 → 因果卷积 → 状态更新 → 门控输出"]
+  TYPE -->|"每第 4 层"| ATTN["Gated Attention<br/>24Q / 4KV → QK Norm / RoPE → KV Cache<br/>QKᵀ → causal Softmax → PV → 输出门控"]
+  DELTA --> R1["Attention 残差相加"]
+  ATTN --> R1
+  R1 --> N2["FFN 前 RMSNorm"]
+  N2 --> FFN["Dense SwiGLU<br/>5120 → Gate / Up 17408 → SiLU ⊙ Up → Down 5120"]
+  FFN --> R2["FFN 残差相加"]
+  R2 --> LOOP{"已完成 64 层？"}
+  LOOP -->|"下一层"| N1
+  LOOP -->|"是"| FINAL["最终 RMSNorm → LM Head 248320 → 采样 / 反分词"]
+  style FFN fill:#e6e5ca,stroke:#a9a672
+  style DELTA fill:#ddebe4,stroke:#87a596
+  style ATTN fill:#dbe9ec,stroke:#87a1ac

@@ -1,0 +1,82 @@
+/* UTF-8 · 只渲染独立的 Mermaid 三维场景，不加载产品网页。 */
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require('playwright'),{writeReport}=require('./report.cjs');
+const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),logs=[];
+const check=(name,value)=>{assert.ok(value,name);logs.push(name);console.log('通过：'+name);};
+(async()=>{
+ const edge='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+ const browser=await chromium.launch({headless:true,...(process.env.SPATIAL_BROWSER?{executablePath:process.env.SPATIAL_BROWSER}:fs.existsSync(edge)?{executablePath:edge}:{})});
+ try{
+  const page=await browser.newPage({viewport:{width:1100,height:720},deviceScaleFactor:1}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.setContent('<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><body class="light"><div id="cluster-canvas"></div></body></html>');
+  for(const file of ['hardware.css','performance.css','cluster.css','light.css','flow-layout.css','cycle.css','request-layout.css'])await page.addStyleTag({content:read(file)});
+  await page.addStyleTag({content:'html,body{margin:0!important;padding:0!important;display:block!important;height:100%!important;width:100%!important;overflow:hidden!important}#cluster-canvas{width:100%!important;height:100%!important}*{transition:none!important}'});
+  for(const file of ['hardware-diagrams.js','performance-model.js','performance-lessons.js','request-flow.js','operator-lessons.js','cluster-model.js','cluster-map.js','cluster-lessons.js','software-flow.js','spatial-camera.js','cluster-scene.js','hardware-viewport.js','hardware-motion.js'])await page.addScriptTag({content:read(file)});
+  const initial=await page.evaluate(()=>{
+   const container=document.getElementById('cluster-canvas'),M=GROQ_CLUSTER_MAP,L=GROQ_CLUSTER_LESSONS;
+   window.testModel=GROQ_CLUSTER.build();window.testLesson=L;
+   window.scene=GROQ_CLUSTER_SCENE.create({container,assets:HARDWARE_SVGS,onSelect(){}});
+   window.physicalSnapshot=()=>Object.entries(scene.hardware).map(([id,n])=>[id,n.getAttribute('transform'),n.querySelector('text')?.textContent,...['x','y','width','height'].map(k=>n.querySelector('rect').getAttribute(k))]);
+   window.originalHardware=JSON.stringify(physicalSnapshot());
+   window.showPhase=(id,index,selected=null)=>{const p=L.phases(testModel,id)[index];scene.render(testModel,L.patch(testModel,id,index),selected,p);return p;};
+   window.frameChip=chip=>scene.setViewport(GROQ_VIEWPORT.cluster(M,{mode:'chip',chip}).box);
+   showPhase('attention',0);frameChip(0);
+   return{labels:Object.entries(scene.hardware).filter(([id,n])=>n.dataset.kind==='sl-label'||n.dataset.kind==='slice').map(([id,n])=>n.querySelector('text')?.textContent),vx:Object.entries(scene.hardware).filter(([id])=>/^C\d_VX$/.test(id)).length,readouts:container.querySelectorAll('.spatial-hardware [data-kind="readout"]').length,data:Object.values(scene.cards).filter(c=>!c.host.hidden&&c.layer==='data').length,instruction:Object.values(scene.cards).filter(c=>!c.host.hidden&&c.layer==='instruction').length,transform:getComputedStyle(container.querySelector('.spatial-stage')).transform};
+  });
+  check('硬件基底没有软件读数节点，四颗芯片各保留一个 VXM',initial.readouts===0&&initial.vx===4);
+  check('SL 与功能切片短标签完整，数据和指令同时悬浮显示',initial.labels.every(t=>!t.includes('…'))&&initial.data>0&&initial.instruction>0&&initial.transform.startsWith('matrix3d'));
+  const independent=await page.evaluate(()=>{
+   const cpu=scene.hardware.C0_DIE,rect=n=>{const b=n.getBoundingClientRect();return{x:b.x,y:b.y,w:b.width,h:b.height};};
+   const before=rect(cpu),card=scene.cards.C0_W,y=rect(card.node).y;scene.setLayers({height:140});
+   const upperMoved=Math.abs(rect(card.node).y-y)>10,base=rect(cpu);
+   scene.setLayers({data:false});const hidden=Object.values(scene.cards).filter(c=>c.layer==='data').every(c=>c.host.hidden),controlVisible=!scene.cards.C0_ICU.host.hidden;
+   scene.setLayers({data:true,instruction:false});const instructionsHidden=Object.values(scene.cards).filter(c=>c.layer==='instruction').every(c=>c.host.hidden);
+   scene.setLayers({instruction:true,height:96,tilted:false});const flat=new DOMMatrix(getComputedStyle(document.querySelector('.spatial-stage')).transform).isIdentity;scene.setLayers({tilted:true});
+   showPhase('attention',1,'C1_MW0');const selectionIndependent=scene.cards.C1_ICU.host.hidden;
+   return{baseUnchanged:JSON.stringify(before)===JSON.stringify(base),upperMoved,hidden,controlVisible,instructionsHidden,flat,selectionIndependent,hardwareUnchanged:originalHardware===JSON.stringify(physicalSnapshot())};
+  });
+  check('调层间距只抬高信息；切换图层、俯视和选择均不修改硬件',independent.baseUnchanged&&independent.upperMoved&&independent.hidden&&independent.controlVisible&&independent.instructionsHidden&&independent.hardwareUnchanged&&independent.selectionIndependent&&independent.flat);
+  const animation=await page.evaluate(async()=>{
+   const container=document.getElementById('cluster-canvas');
+   const phase={title:'双层时钟验证',instruction:'MXM · 矩阵执行',focus:['C0_MAC'],packets:[{from:'C0_W',to:'C0_MAC',label:'W tile',tone:'weight'},{from:'C0_ICU',to:'C0_MAC',label:'MXM',tone:'control'}]};
+   window.motion=HARDWARE_MOTION.create({container,assets:HARDWARE_SVGS,graph:()=> 'cluster6',paint:p=>scene.render(testModel,testLesson.patch(testModel,'attention',1),null,p),resolveNode:scene.node,resolvePoint:scene.point,route:scene.route,overlayFor:scene.overlayFor,onTime(){},onStatus(){},onEnd(){}});
+   motion.load([phase],{milliseconds:4000,autoplay:false});motion.seek(.12);
+   const data=document.querySelector('.spatial-data .moving-value'),control=document.querySelector('.spatial-instruction .moving-value');
+   const a=[data.getAttribute('transform'),control.getAttribute('transform')];motion.play();await new Promise(resolve=>setTimeout(resolve,180));motion.pause();
+   const b=[data.getAttribute('transform'),control.getAttribute('transform')],hardwarePackets=document.querySelectorAll('.spatial-hardware .moving-value').length;
+   motion.seek(.12);const c=[data.getAttribute('transform'),control.getAttribute('transform')];motion.clear();
+   const p=testLesson.phases(testModel,'link')[1];motion.load([p],{autoplay:false});motion.seek(.3);scene.setViewport(GROQ_VIEWPORT.cluster(GROQ_CLUSTER_MAP,{mode:'board'}).box);
+   const route=scene.route(p.packets[0]),boxes=Array.from(document.querySelectorAll('.spatial-plane')).map(s=>s.getAttribute('viewBox'));
+   return{bothMove:a[0]!==b[0]&&a[1]!==b[1],seekRestores:JSON.stringify(a)===JSON.stringify(c),hardwarePackets,route:route.length,boxSync:new Set(boxes).size===1,overlays:document.querySelectorAll('.motion-overlay').length};
+  });
+  check('数据与指令在独立三维平面同钟运动，暂停后可精确回拖',animation.bothMove&&animation.seekRestores&&animation.hardwarePackets===0);
+  check('C2C 路线保留物理接口锚点；切换镜头同步全部平面且清除旧动画',animation.route>=6&&animation.boxSync&&animation.overlays===1);
+  fs.mkdirSync(path.join(root,'预览'),{recursive:true});
+  await page.evaluate(()=>{motion.clear();showPhase('attention',0);frameChip(0);});
+  await page.screenshot({path:path.join(root,'预览/三维分层_权重读取.png')});
+  await page.evaluate(()=>{showPhase('attention',1);});
+  await page.screenshot({path:path.join(root,'预览/三维分层_MXM.png')});
+  await page.evaluate(()=>scene.setLayers({data:false,instruction:false}));
+  await page.screenshot({path:path.join(root,'预览/三维分层_仅硬件.png')});
+  await page.evaluate(()=>{scene.setLayers({data:true,instruction:true});showPhase('attention',0);});
+  await page.setViewportSize({width:760,height:580});await page.evaluate(()=>frameChip(0));
+  const contained=await page.evaluate(()=>Object.values(scene.cards).filter(c=>!c.host.hidden).map(c=>{const b=c.node.getBoundingClientRect();return{id:c.id,inside:b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight};}));
+  await page.screenshot({path:path.join(root,'预览/三维分层_窄画布.png')});
+  check('窄画布下当前芯片的悬浮卡可见，渲染没有脚本异常',contained.length>0&&contained.every(c=>c.inside)&&errors.length===0);
+  await page.setViewportSize({width:1100,height:720});
+  await page.evaluate(()=>{const lesson=GROQ_REQUEST_FLOW.build(testModel,'q'),p=lesson.phases[2];scene.render(testModel,lesson.patch(2,false),null,p);frameChip(0);});
+  await page.screenshot({path:path.join(root,'预览/三维分层_Q投影.png')});
+  const board=await page.evaluate(()=>{showPhase('place',1);scene.setViewport(GROQ_VIEWPORT.cluster(GROQ_CLUSTER_MAP,{mode:'board'}).box);return [0,1,2,3].map(i=>Object.values(scene.cards).filter(c=>c.spec.owner==='C'+i&&!c.host.hidden).length);});
+  assert.ok(board.every(n=>n===2),'四片总览每片只显示当前数据和指令');
+  await page.screenshot({path:path.join(root,'预览/三维分层_四片总览.png')});
+  await page.evaluate(()=>{const lesson=GROQ_REQUEST_FLOW.build(testModel,'request'),p=lesson.phases[2];scene.render(testModel,lesson.patch(2,false),null,p);scene.setViewport(GROQ_VIEWPORT.cluster(GROQ_CLUSTER_MAP,{phase:p,local:.5}).box);});
+  await page.screenshot({path:path.join(root,'预览/三维分层_外部接入.png')});
+  const hostVisible=await page.evaluate(()=>{const box=scene.svg.viewBox.baseVal,at=scene.point('HOST');return at.x>=box.x&&at.x<=box.x+box.width&&at.y>=box.y&&at.y<=box.y+box.height;});
+  assert.ok(hostVisible,'主机阶段的镜头包含硬件归属点');
+  assert.deepEqual(errors,[],'全部场景无脚本异常');
+  writeReport('三维分层场景验证.md','# 三维分层场景验证\n\n'+logs.map(x=>'- 通过：'+x).join('\n')+'\n\n仅渲染独立 Mermaid 场景；不加载交互 HTML，不等于完整网页视觉验收或 Groq 实机验证。\n');
+  console.log('共 '+logs.length+' 组三维场景检查通过。');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

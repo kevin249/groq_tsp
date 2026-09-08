@@ -2,18 +2,19 @@
 (function(root){
  'use strict';
  const locate=(ratio,count)=>{const t=Math.max(0,Math.min(1,ratio));const index=Math.min(count-1,Math.floor(t*count));return{index,local:t===1?1:t*count-index};};
- function create({container,assets,graph,paint,onTime,onStatus,onEnd,resolveNode,resolvePoint,route}){
-  let phases=[],duration=8000,elapsed=0,last=0,raf=null,running=false,index=-1,overlay=null,marks=[],reduced=false;
+ function create({container,assets,graph,paint,onTime,onStatus,onEnd,resolveNode,resolvePoint,route,overlayFor}){
+  let phases=[],duration=8000,elapsed=0,last=0,raf=null,running=false,index=-1,overlay=null,overlays=[],marks=[],reduced=false;
   const ns='http://www.w3.org/2000/svg';
   const holder=document.createElement('div');holder.innerHTML=assets.packet.svg;const template=holder.querySelector('[data-hw-id="PACKET"]');
-  function removeOverlay(){overlay?.remove();overlay=null;marks=[];}
+  function removeOverlay(){overlays.forEach(n=>n.remove());overlays=[];overlay=null;marks=[];}
   function clearFocus(){container.querySelectorAll('.motion-focus').forEach(n=>n.classList.remove('motion-focus'));}
   function point(id){if(resolvePoint)return resolvePoint(id);const n=assets[graph()].nodes[id];return n?{x:n.x+n.width/2,y:n.y+n.height/2}:null;}
   function prepare(phase){
    removeOverlay();clearFocus();paint(phase,index);
    phase.focus.forEach(id=>(resolveNode?resolveNode(id):container.querySelector(`[data-hw-id="${id}"]`))?.classList.add('motion-focus'));
    const svg=container.querySelector('svg');if(!svg||reduced)return;
-   overlay=document.createElementNS(ns,'g');overlay.setAttribute('class','motion-overlay');overlay.setAttribute('aria-hidden','true');overlay.style.pointerEvents='none';svg.appendChild(overlay);
+   const layers=new Map();
+   function motionLayer(tone){const target=overlayFor?.(tone)||svg;if(layers.has(target))return layers.get(target);const group=document.createElementNS(ns,'g');group.setAttribute('class','motion-overlay');group.setAttribute('aria-hidden','true');group.style.pointerEvents='none';target.appendChild(group);layers.set(target,group);overlays.push(group);return group;}
    for(const p of phase.packets){
     const a=point(p.from),b=point(p.to);if(!a||!b)continue;
     const node=template.cloneNode(true);node.removeAttribute('id');node.removeAttribute('data-hw-id');node.setAttribute('class','moving-value '+p.tone);
@@ -21,7 +22,7 @@
     const width=Math.max(44,Array.from(p.label).reduce((w,c)=>w+(/[\u0000-\u007f]/.test(c)?10:18),0)+22);
     if(rect){rect.setAttribute('x',String(-width/2));rect.setAttribute('y','-17');rect.setAttribute('width',String(width));rect.setAttribute('height','34');rect.setAttribute('rx','6');}
     label?.setAttribute('transform','translate(0,0)');if(text){text.replaceChildren();text.textContent=p.label;text.setAttribute('x','0');text.setAttribute('y','6');text.setAttribute('text-anchor','middle');text.style.fontSize='18px';}
-    overlay.appendChild(node);marks.push({node,a,b,packet:p,delay:p.delay||0});
+    overlay=motionLayer(p.tone);for(const shape of node.querySelectorAll('[style]'))shape.setAttribute('style',shape.getAttribute('style').replace(/!important/g,''));overlay.appendChild(node);marks.push({node,a,b,packet:p,delay:p.delay||0});
    }
   }
   function draw(){

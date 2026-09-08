@@ -8,13 +8,13 @@
  const focus=(group,key)=>group.map(i=>'C'+i+'_'+key),fmt=a=>'['+a.join(', ')+']';
  function phases(m,id,{vector=0,link=null}={}){
   const {c,group,groups,TP,PP,d}=m,ranks=group.map(i=>m.chips[i]),entry=groups[0][0],last=groups.at(-1),q=c.request,all=m.active.map(x=>x.id),next=groups[c.stage+1]||[],first=id==='link'&&link?link[0]:group[0],second=id==='link'&&link?link[1]:group[1]??next[0]??C.edges.find(e=>e.includes(first)).find(i=>i!==first);
-  const common='这是明确选定的教学部署，具体放置由模型编译与运行时安排。';
+  const common='这是明确选定的示例部署，具体放置由模型编译与运行时安排。';
   switch(id){
    case'place':return[
     phase('先确定副本、流水段和张量分片',m.spec.detail+' 每颗芯片的完整分工列在右侧表格。',['HOST',...focus(all,'TITLE')]),
     phase('各段各片装载自己的权重','这些模型参数在部署时准备，热请求主要传输入与中间激活。词嵌入与末段词表在不同位置需要各自可访问的副本。',focus(all,'W'),all.flatMap((i,k)=>[packet('HOST','C'+i+'_W','权重分片','weight',k*.08),packet('HOST','C'+i+'_PROG','已编译指令','control',.25+k*.05)])),
     phase('给 KV 保留请求、层和头的地址','KV 的索引包括请求、模型层、KV 头、Token 位置。不同请求的缓存有独立归属。',focus(all,'KV')),
-    phase('编译时序包含计算和 Send / Receive','ICU 消费编排好的指令。同步和 Deskew 配合片间传输；每个教学片段不等于真实时钟周期。',focus(all,'ICU'),all.map(i=>local(i,'ICU','TX','Send / Receive','control')))
+    phase('编译时序包含计算和 Send / Receive','ICU 消费编排好的指令。同步和 Deskew 配合片间传输；每个演示片段不等于真实时钟周期。',focus(all,'ICU'),all.map(i=>local(i,'ICU','TX','Send / Receive','control')))
    ];
    case'bind':return[
     phase('主机接收请求 '+q,m.spec.groups.length===2?'A 固定使用 0、2 号芯片，B 固定使用 1、3 号芯片；切换查看请求不会搬迁缓存。':'这个副本的全部模型分片共同服务请求 '+q+'。不同 Token 会复用同一组分片和 KV。',['REQUEST'+q,'HOST']),
@@ -49,7 +49,7 @@
    ];
    case'link':{
     const t=m.transfer(m.activation),v=Math.max(0,Math.min(vector,t.slots-1)),use=Math.min(320,t.payload-v*320),window=Math.floor(v/t.windowSlots)+1;
-    return[phase('源 MEM 读出第 '+(v+1)+' / '+t.slots+' 个向量',`字节偏移 ${v*320}；本槽有效 ${use} B，教学填充 ${320-use} B；属于接收窗口 ${window}/${t.windows}。`,['C'+first+'_INPUT','C'+first+'_TX'],[local(first,'INPUT','TX','向量 '+v)]),phase('Send 经 SerDes 和物理链路发送',`TSP ${first} → TSP ${second}，有效单向带宽 ${P.num(m.bandwidth/1e9)} GB/s。320 B 是向量指令粒度，线上编码与协议损耗归入有效率。`,['C'+first+'_SER_TX','C'+second+'_SER_RX'],[wire(first,second,'向量 '+v+' · 320 B')]),phase('接收端对齐，写入接收缓冲','SerDes 还原数据；同步、Deskew 与软件节奏配合，安排接收方何时可消费。四个槽只是缓冲窗口的可见示意。',['C'+second+'_SER_RX','C'+second+'_RX'],[local(second,'SER_RX','RX','已接收'),local(second,'RX','FIFO'+v%4,'槽 '+v,'data',.2)]),phase('Receive 将有效数据写入目的 MEM','接收完成后才允许该向量被目的算子使用。较大张量跨多个窗口发送，额外等待预算在右侧单列。',['C'+second+'_INPUT'],[local(second,'FIFO'+v%4,'INPUT',use+' B 有效数据','result')])];
+    return[phase('源 MEM 读出第 '+(v+1)+' / '+t.slots+' 个向量',`字节偏移 ${v*320}；本槽有效 ${use} B，示例填充 ${320-use} B；属于接收窗口 ${window}/${t.windows}。`,['C'+first+'_INPUT','C'+first+'_TX'],[local(first,'INPUT','TX','向量 '+v)]),phase('Send 经 SerDes 和物理链路发送',`TSP ${first} → TSP ${second}，有效单向带宽 ${P.num(m.bandwidth/1e9)} GB/s。320 B 是向量指令粒度，线上编码与协议损耗归入有效率。`,['C'+first+'_SER_TX','C'+second+'_SER_RX'],[wire(first,second,'向量 '+v+' · 320 B')]),phase('接收端对齐，写入接收缓冲','SerDes 还原数据；同步、Deskew 与软件节奏配合，安排接收方何时可消费。四个槽只是缓冲窗口的可见示意。',['C'+second+'_SER_RX','C'+second+'_RX'],[local(second,'SER_RX','RX','已接收'),local(second,'RX','FIFO'+v%4,'槽 '+v,'data',.2)]),phase('Receive 将有效数据写入目的 MEM','接收完成后才允许该向量被目的算子使用。较大张量跨多个窗口发送，额外等待预算在右侧单列。',['C'+second+'_INPUT'],[local(second,'FIFO'+v%4,'INPUT',use+' B 有效数据','result')])];
    }
    case'handoff':return next.length?[
     phase('本段最后一层的激活就绪',`本段包含层 ${ranks[0].layerStart+1}—${ranks[0].layerEnd}。阶段边界的激活为 ${P.bytes(m.activation)}，KV 留在原阶段。`,focus(group,'INPUT')),

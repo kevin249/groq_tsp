@@ -8,12 +8,13 @@
   if(mode==='board')return{box:{x:0,y:0,w:map.width,h:map.height},label:'四片总览 · 选择芯片查看内部',chip:null};
   const die=i=>map.nodes['C'+i+'_DIE'],owner=id=>map.nodes[id]?.owner,center=b=>({x:b.x+b.w/2,y:b.y+b.h/2});
   const focused=phase.focus.map(owner).find(v=>/^C\d$/.test(v||''));let active=mode==='chip'?chip:focused?Number(focused[1]):chip;const selected=die(active)||die(0);let c=center(selected),label='TSP '+active+' · 芯片内部';
+  if(mode==='follow'&&phase.focus.length&&phase.focus.every(id=>owner(id)==='HOST')){const external=map.nodes[phase.focus[0]];c=center(external);active=null;label='芯片外 · '+external.label;}
   const packet=phase.packets.find(p=>p.wire)||phase.packets.find(p=>p.tone!=='control')||phase.packets[0];
   if(mode==='follow'&&packet){const aOwner=owner(packet.from),bOwner=owner(packet.to),aChip=/^C\d$/.test(aOwner||'')?Number(aOwner[1]):null,bChip=/^C\d$/.test(bOwner||'')?Number(bOwner[1]):null;
    if(aOwner!==bOwner){const a=aChip!==null?center(die(aChip)):center(map.nodes[packet.from]),b=bChip!==null?center(die(bChip)):center(map.nodes[packet.to]);const t=ease(clamp((local-.25)/.45,0,1));c={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};active=t<.5?aChip:bChip;label=(aChip===null?'主机':'TSP '+aChip)+' → '+(bChip===null?'主机':'TSP '+bChip)+(packet.wire?' · C2C 传输':' · 输入 / 返回');}
    else if(aChip===null){c=center(map.nodes[packet.to]);active=null;label='芯片外 · 主机与请求缓冲';}
   }
-  let box=frame(c.x,c.y,658,450,zoom);box.x=clamp(box.x,0,Math.max(0,map.width-box.w));box.y=clamp(box.y,0,Math.max(0,map.height-box.h));return{box,label,chip:active};
+  let box=frame(c.x,c.y,selected.w+48,selected.h+59,zoom);box.x=clamp(box.x,0,Math.max(0,map.width-box.w));box.y=clamp(box.y,0,Math.max(0,map.height-box.h));return{box,label,chip:active};
  }
  function single(layout,{focus=[],overview=false,zoom=1,external=false}={}){
   if(overview)return{x:0,y:0,w:1224,h:external?1020:760};

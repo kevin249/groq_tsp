@@ -1,4 +1,4 @@
-/* UTF-8 · 同一块芯片内的语义放大。整个学习过程只装载一次主场景。 */
+/* UTF-8 · 同一块芯片内的语义放大。整个演示过程只装载一次主场景。 */
 (function(root){
  'use strict';const A=root.HARDWARE_ATLAS_MAP,ns='http://www.w3.org/2000/svg';
  const paintClasses=['hw-idle','hw-active','hw-data','hw-gold','hw-computed','hw-mask','hw-current','hw-picked','source-selected'];
@@ -10,7 +10,7 @@
    const id=n.dataset.hwId;elements[id]=n;const spec=A.specs[id];if(!spec)continue;
    n.style.transformBox='view-box';n.style.transformOrigin='0 0';n.dataset.owner=spec.owner;n.dataset.kind=spec.kind;
    const title=document.createElementNS(ns,'title');title.textContent=spec.label;n.appendChild(title);
-   if(['region','heading','tile','detail','port','peer','external','pin'].includes(spec.kind)){
+   if(['region','heading','tile','detail','port','peer','external','pin','sl-label'].includes(spec.kind)){
     n.dataset.interactive='true';n.setAttribute('role','button');n.setAttribute('tabindex',spec.kind==='tile'?'-1':'0');
     const action=()=>onSelect(id,ctx);n.addEventListener('click',action);n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();action();}});
    }
@@ -30,11 +30,13 @@
    const n=elements[id],b=geometry.nodes[id];if(!n||!b)return;const t=n.querySelector('text');if(!t)return;
    const physical=A.specs[id],isFrame=physical.kind==='frame';let arr=lines.map(String);
    if(['region','tile','lanepin','pin','bridge'].includes(physical.kind))arr=[];
-   const font=physical.kind==='heading'?(b.w<65?10:16):physical.kind==='location'?12:physical.kind==='frame'?16:physical.kind==='detail'?(ctx.lab?14:12):14;
-   const max=Math.max(4,Math.floor((b.w-8)/(font*.7)));
-   arr=arr.map(line=>line.length>max?line.slice(0,max-1)+'…':line);
-   if(b.h<29&&arr.length>1)arr=[arr.join(' ').slice(0,max)];
-   t.replaceChildren();t.style.fontSize=font+'px';t.setAttribute('text-anchor',isFrame?'start':'middle');t.setAttribute('x',isFrame?String(-b.w/2+16):'0');t.setAttribute('y',isFrame?String(-b.h/2+23):String(4-(arr.length-1)*7));
+   const font=physical.kind==='sl-label'?12:physical.kind==='heading'?(b.w<65?10:16):physical.kind==='location'?12:physical.kind==='frame'?16:physical.kind==='detail'?(ctx.lab?14:12):14;
+   // 按中英文的近似字宽裁切，保留 SL 10—19 等完整编号。
+   const charWidth=ch=>font*(ch.charCodeAt(0)<128?.56:1),limit=b.w-8;
+   const clip=line=>{if([...line].reduce((w,ch)=>w+charWidth(ch),0)<=limit)return line;let w=0,out='';for(const ch of line){if(w+charWidth(ch)>limit-font)break;out+=ch;w+=charWidth(ch);}return out+'…';};
+   arr=arr.map(clip);
+   if(b.h<29&&arr.length>1)arr=[clip(arr.join(' '))];
+   t.replaceChildren();t.style.fontSize=font+'px';t.setAttribute('text-anchor',isFrame?'start':'middle');t.style.textAnchor=isFrame?'start':'middle';t.setAttribute('x',isFrame?String(-b.w/2+16):'0');t.setAttribute('y',isFrame?String(-b.h/2+23):String(4-(arr.length-1)*7));
    arr.forEach((line,i)=>{const span=document.createElementNS(ns,'tspan');span.setAttribute('x',isFrame?String(-b.w/2+16):'0');if(i)span.setAttribute('dy','14');span.textContent=line;t.appendChild(span);});
   }
   function relayout(next){
@@ -94,7 +96,8 @@
   function render({state,kind,context,patch,selected,macPatch}){
    currentLogical=kind;lastState=state;relayout(context);
    for(const[id,n]of Object.entries(elements)){
-    paintClasses.forEach(c=>n.classList.remove(c));const s=A.specs[id];if(s.kind==='detail'||s.kind==='external'||s.kind==='port')label(id,[s.label]);
+    paintClasses.forEach(c=>n.classList.remove(c));const s=A.specs[id];if(['detail','external','port','frame','bridge'].includes(s.kind))label(id,[s.label]);
+    if(s.kind==='sl-label'){label(id,[s.label]);if(s.sl===ctx.sl)n.classList.add('hw-active','source-selected');}
     if(s.kind==='tile'){
      const row=Number(id.match(/R(\d+)/)?.[1]),col=Number(id.match(/C(\d+)/)?.[1]||0);
      if(row===ctx.sl){n.classList.add('hw-active');if(ctx.detail.has(s.owner)&&(!s.owner.startsWith('MEM')||col===ctx.slice))n.classList.add('source-selected');}

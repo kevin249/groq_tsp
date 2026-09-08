@@ -1,0 +1,158 @@
+/* UTF-8 · 面板是 Three.js 场景中的 CSS3DObject，随相机补偿朝向。 */
+body[data-workspace="spatial"] {display:block!important;overflow:hidden!important;margin:0;background:#e6e9e7}
+body[data-workspace="spatial"] > :not(#spatial-lab):not(script) {display:none!important}
+body:not([data-workspace="spatial"]) #spatial-lab {display:none!important}
+#spatial-lab {position:fixed;inset:0;overflow:hidden;color:#203c3d;font:13px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;isolation:isolate}
+#spatial-lab canvas.sl-render {position:absolute;inset:0;display:block;touch-action:none;outline:none}
+#spatial-lab .sl-css {position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.sl-panel {box-sizing:border-box;pointer-events:auto;background:rgba(250,253,251,.92);border:1px solid rgba(255,255,255,.95);border-radius:17px;box-shadow:0 12px 38px #183b3a16,0 1px 3px #183b3a20;padding:18px;color:#203c3d;font:13px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;backface-visibility:hidden}
+.sl-panel * {box-sizing:border-box}
+.sl-panel button,.sl-panel select {font:inherit;color:inherit;min-height:30px;border:1px solid #d6e1db;background:#f5f8f6;border-radius:7px;padding:5px 9px;cursor:pointer;box-shadow:none}
+.sl-panel button:hover {background:#e3efea;border-color:#8ea99e}
+.sl-panel button[aria-pressed=true],.sl-panel .sl-primary {background:#235e51;color:#fff;border-color:#235e51}
+.sl-panel button:disabled {opacity:.4;cursor:default}
+.sl-panel button:focus-visible,.sl-panel select:focus-visible {outline:2px solid #187964;outline-offset:2px}
+.sl-panel a {color:#267b68;text-decoration:none}
+.sl-panel a:hover {text-decoration:underline}
+.sl-panel h1,.sl-panel h2,.sl-panel h3,.sl-panel p {margin:0}
+.sl-panel h2 {font-size:19px;font-weight:600;letter-spacing:-.4px}
+.sl-panel h3 {font-size:15px;font-weight:600;line-height:1.55}
+.sl-eyebrow {font-size:10px;letter-spacing:2px;color:#67817c;margin-bottom:5px}
+.sl-muted {color:#718781;font-size:11px;line-height:1.6}
+.sl-row {display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sl-between {justify-content:space-between}
+.sl-title {background:rgba(250,253,251,.85);padding:13px 20px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.sl-title h1 {font-size:19px;letter-spacing:-.5px;color:#243d39;font-weight:600}
+.sl-title small {font-size:11px;letter-spacing:1px;color:#67817c}
+.sl-brandmark {width:27px;height:27px;background:#27634e;border-radius:8px;display:inline-grid;place-items:center;color:#d5efad;margin-right:11px;font-size:17px;font-weight:600}
+.sl-left,.sl-right {display:flex;flex-direction:column;gap:13px}
+.sl-model {display:grid;gap:6px}
+.sl-model select {width:100%;font-size:12px}
+.sl-layer {display:flex;align-items:center;gap:6px}
+.sl-layer select {flex:1;min-width:0}
+.sl-scroll {overflow:auto;scrollbar-width:thin;scrollbar-color:#b5c8bf transparent;min-height:0;overscroll-behavior:contain;padding-right:4px}
+.sl-flow {flex:1}
+.sl-flow details {border-top:1px solid #e1e8e3;padding:8px 0 4px}
+.sl-flow summary {cursor:pointer;font-size:12px;font-weight:600;color:#56716a;list-style:none;display:flex;justify-content:space-between}
+.sl-flow summary::after {content:'＋';font-weight:400}
+.sl-flow details[open] summary::after {content:'−'}
+.sl-flow .sl-step {display:flex;align-items:flex-start;gap:8px;text-align:left;width:100%;border:0;background:transparent;padding:7px 6px;margin-top:3px;font-size:12px;line-height:1.4}
+.sl-step i {font:10px/19px Consolas,monospace;flex-shrink:0;min-width:20px;text-align:center;border-radius:50%;background:#e7eeea;color:#688278;font-style:normal}
+.sl-step[aria-pressed=true] {background:#e1eee7!important;color:#204b3c!important}
+.sl-step[aria-pressed=true] i {background:#27664f;color:white}
+.sl-step small {display:block;color:#7d9087;font-size:10px;margin-top:2px}
+.sl-streams {border-top:1px solid #dbe5de;padding-top:10px;display:grid;gap:6px;font-size:11px;line-height:1.6}
+.sl-streams b {font-size:10px;margin-right:5px;font-weight:500}
+.sl-instruction {color:#8465af}.sl-data {color:#1b8093}
+.sl-time {font:36px/1.2 "Segoe UI",sans-serif;font-weight:300;color:#25493f;letter-spacing:-1.5px}
+.sl-time small {font-size:14px;letter-spacing:0;color:#71887e;margin-left:5px}
+.sl-metrics {display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #dce5df;border-bottom:1px solid #dce5df;padding:10px 0;gap:12px}
+.sl-metrics span {display:block;font-size:10px;color:#728a7f}
+.sl-metrics strong {display:block;font-size:15px;font-weight:500;color:#28483d;margin-top:3px;overflow-wrap:anywhere}
+.sl-equation {font-family:Consolas,"Microsoft YaHei",monospace;font-size:12px;overflow-wrap:anywhere;line-height:1.8;background:#edf2ee;border-left:2px solid #88b5a1;border-radius:0 7px 7px 0;padding:10px;margin:10px 0}
+.sl-spec {font-size:11px;color:#6b8277;line-height:1.8}
+.sl-part {margin-top:12px;border-top:1px solid #dce5df;padding-top:10px;font-size:12px}
+.sl-sources {font-size:11px;margin-top:12px}
+.sl-sources summary {cursor:pointer;color:#477a65}
+.sl-sources a {display:block;margin-top:5px}
+.sl-toolbar {padding:9px 12px;display:flex;align-items:center;gap:4px;justify-content:center;white-space:nowrap}
+.sl-toolbar button {border:0;background:transparent;font-size:12px;padding:5px 9px}
+.sl-toolbar .sl-divider {height:17px;width:1px;background:#cedcd4;margin:0 4px}
+.sl-caption {background:rgba(246,250,247,.84);padding:8px 13px;text-align:center;box-shadow:0 4px 22px #183b3a0c;border-radius:10px;font-size:11px;color:#5a746a}
+.sl-bottom {display:flex;flex-direction:column;gap:9px;padding:12px 18px}
+.sl-prompt {font-size:12px;color:#557568;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sl-tokenlist {display:flex;align-items:center;justify-content:center;gap:18px;min-height:46px;overflow-x:auto;scrollbar-width:thin}
+.sl-tokenlist button {background:transparent;border:0;min-width:max-content;padding:2px 3px;border-radius:0;border-bottom:2px solid transparent;font-size:16px;color:#347c81;line-height:1.4}
+.sl-tokenlist button[aria-pressed=true] {background:transparent;color:#166b66;border-bottom-color:#287569}
+.sl-tokenlist small {display:block;font:10px/1.5 Consolas,monospace;color:#8d9b92}
+.sl-playback {display:flex;align-items:center;justify-content:space-between;gap:5px;border-top:1px solid #dde7df;padding-top:9px}
+.sl-playback button {font-size:12px}
+.sl-playback input[type=range] {width:70px;accent-color:#326d54;min-width:30px}
+.sl-progress {height:2px;background:#e0e8e1;border-radius:2px;overflow:hidden}
+.sl-progress span {display:block;height:100%;background:#62937a;width:0%}
+.sl-diagram {display:flex;flex-direction:column;gap:12px;z-index:10;box-shadow:0 24px 100px #1f403655;background:#fbfdfb}
+.sl-diagram .sl-diagram-body {flex:1;overflow:auto}
+.sl-diagram svg {width:100%;height:auto;min-height:450px}
+.sl-error {position:absolute;inset:20%;padding:30px;background:#fff;border-radius:18px;font-size:15px}
+@media(max-width:1300px){.sl-panel{padding:12px;font-size:12px}.sl-left,.sl-right{gap:9px}.sl-panel h2{font-size:17px}.sl-time{font-size:30px}.sl-toolbar button{font-size:11px;padding:4px 5px}.sl-tokenlist{gap:12px}.sl-panel .sl-step{font-size:11px;padding:6px 4px}.sl-title h1{font-size:17px}}
+@media(max-width:950px){.sl-title small{display:none}.sl-panel{padding:10px}.sl-layer{flex-wrap:wrap}.sl-toolbar button{padding:3px;font-size:10px}.sl-streams{font-size:10px}.sl-tokenlist{gap:8px}.sl-tokenlist button{font-size:13px}.sl-playback{flex-wrap:wrap}.sl-time{font-size:25px}.sl-prompt{font-size:10px}.sl-panel h2{font-size:15px}}
+/* 隔离旧视图的按钮规则，确保 Token 保持无背景的字片。 */
+#spatial-lab .sl-panel button,#spatial-lab .sl-panel select {font:inherit;line-height:1.4;min-height:30px;color:#315d4f;border:1px solid #d6e1db;background:#f5f8f6;border-radius:7px;padding:5px 9px;box-shadow:none;text-shadow:none;transform:none;transition:background .15s}
+#spatial-lab .sl-panel button[aria-pressed=true],#spatial-lab .sl-panel .sl-primary {background:#235e51;color:white;border-color:#235e51}
+#spatial-lab .sl-panel .sl-step {display:flex;width:100%;border:0;background:transparent;text-align:left;font-size:12px;line-height:1.4;padding:7px 6px;box-shadow:none}
+#spatial-lab .sl-panel .sl-step[aria-pressed=true] {background:#e1eee7;color:#204b3c}
+#spatial-lab .sl-panel .sl-tokenlist button {border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:#48858c;padding:2px 3px;font-size:19px;line-height:1.4}
+#spatial-lab .sl-panel .sl-tokenlist button[aria-pressed=true] {color:#166b66;background:transparent;border-bottom-color:#32745e}
+#spatial-lab .sl-panel .sl-tokenlist small {font:11px/1.5 Consolas,monospace;color:#8d9b92}
+#spatial-lab .sl-toolbar button {font-size:12px;padding:5px 9px;border:0;background:transparent}
+#spatial-lab .sl-toolbar button[aria-pressed=true] {background:#e0eee5;color:#29644f}
+#spatial-lab .sl-playback button {font-size:12px}
+#spatial-lab .sl-prompt button {font-size:11px;min-height:27px}
+@media(max-width:1300px){#spatial-lab .sl-panel .sl-step{font-size:11px;padding:6px 4px}#spatial-lab .sl-toolbar button{font-size:11px;padding:5px}#spatial-lab .sl-panel .sl-tokenlist button{font-size:17px}}
+@media(max-width:950px){#spatial-lab .sl-toolbar button{font-size:10px;padding:3px}#spatial-lab .sl-panel .sl-tokenlist button{font-size:13px}}
+/* Blender 的编辑器分区：顶栏、流程树、属性区与时间轴；保持亮色。 */
+#spatial-lab {background:#ccd0d3;color:#343a40}
+#spatial-lab .sl-panel {border:0;border-radius:0;box-shadow:none;background:#e3e5e7;color:#343a40;padding:11px;font:12px/1.5 "Segoe UI","Microsoft YaHei",sans-serif}
+#spatial-lab .sl-title {background:#c7cbce;padding:0 10px;border-bottom:1px solid #a8aeb3;gap:20px;justify-content:flex-start}
+#spatial-lab .sl-title h1 {font-size:13px;letter-spacing:0;color:#30363d;white-space:nowrap}
+#spatial-lab .sl-brandmark {width:20px;height:20px;margin-right:7px;border-radius:4px;background:#d8893b;font-size:14px;color:#fff}
+#spatial-lab .sl-title small {margin-left:auto;font-size:10px;letter-spacing:0;color:#555f66}
+#spatial-lab .sl-workspaces {display:flex;height:100%;align-items:center;gap:2px}
+#spatial-lab .sl-workspaces span,#spatial-lab .sl-workspaces button {padding:5px 14px;font-size:11px;border:0;background:transparent;min-height:26px;border-radius:3px 3px 0 0;color:#414b52}
+#spatial-lab .sl-workspaces .active {height:29px;align-self:end;background:#e3e5e7;border-top:2px solid #d18a48}
+#spatial-lab .sl-eyebrow {letter-spacing:1px;font-size:9px;color:#758087}
+#spatial-lab .sl-panel h2 {font-size:14px;color:#343e47;font-weight:600}
+#spatial-lab .sl-left,#spatial-lab .sl-right {gap:10px;border-right:1px solid #aeb5ba}
+#spatial-lab .sl-right {border-left:1px solid #aeb5ba;border-right:0;background:#dedfe1}
+#spatial-lab .sl-panel button,#spatial-lab .sl-panel select {background:#eaedef;border:1px solid #b9c0c5;border-radius:3px;color:#424d56;font-size:11px;min-height:26px;padding:4px 7px}
+#spatial-lab .sl-panel button:hover {background:#f2f4f5}
+#spatial-lab .sl-panel button[aria-pressed=true],#spatial-lab .sl-panel .sl-primary {background:#bd7f44;color:#fff;border-color:#ad7138}
+#spatial-lab .sl-model {gap:8px}
+#spatial-lab .sl-model .sl-row {gap:4px}
+#spatial-lab .sl-model .sl-row button {padding:4px 6px}
+#spatial-lab .sl-model .sl-row button[data-action=network] {display:none}
+#spatial-lab .sl-layer {font-size:11px}
+#spatial-lab .sl-flow {margin-left:-11px;margin-right:-11px;padding:0 0 4px}
+#spatial-lab .sl-flow details {border-top:1px solid #c3c9cd;padding-top:0}
+#spatial-lab .sl-flow summary {background:#d5d9dc;padding:7px 10px;font-size:11px;color:#434f58;justify-content:initial;gap:8px}
+#spatial-lab .sl-flow summary::after {margin-left:auto}
+#spatial-lab .sl-panel .sl-step {border-radius:0;margin:0;min-height:29px;padding:6px 10px;font-size:11px;color:#4e5c64}
+#spatial-lab .sl-panel .sl-step[aria-pressed=true] {background:#bed2df!important;color:#233f55!important;border-left:3px solid #5c899f;padding-left:7px}
+#spatial-lab .sl-step i {background:transparent!important;color:#8a989f!important;font-size:9px;min-width:16px}
+#spatial-lab .sl-step[aria-pressed=true] i {color:#356b87!important}
+#spatial-lab .sl-step small {font-size:9px;color:#819099}
+#spatial-lab .sl-streams {border-top:1px solid #b9c3c9;padding-top:8px;gap:4px;font-size:10px}
+#spatial-lab .sl-time {font-size:30px;letter-spacing:-1px;color:#424f58}
+#spatial-lab .sl-time small {font-size:12px}
+#spatial-lab .sl-metrics {border-color:#bbc3c9;gap:9px;padding:9px 0}
+#spatial-lab .sl-metrics strong {font-size:14px;color:#435867}
+#spatial-lab .sl-equation {background:#eef0f2;border:1px solid #c5cbd0;border-radius:3px;font-size:11px;color:#4c5f6b;padding:9px}
+#spatial-lab .sl-spec {color:#52616b;font-size:11px}
+#spatial-lab .sl-muted {color:#78858e;font-size:10px}
+#spatial-lab .sl-part {border-top:1px solid #bfc6cc}
+#spatial-lab .sl-toolbar {background:#d9dde0;padding:1px 7px;justify-content:flex-start;border-bottom:1px solid #aeb5ba;gap:2px}
+#spatial-lab .sl-toolbar button {font-size:11px;background:transparent;border:0;padding:4px 8px}
+#spatial-lab .sl-toolbar button[aria-pressed=true] {background:#9cb8ca;color:#173c56}
+#spatial-lab .sl-caption {background:#ccd0d3bd;text-align:left;pointer-events:none;color:#697680;padding:4px 10px;font-size:10px}
+#spatial-lab .sl-bottom {background:#d4d8db;border-top:1px solid #a3acb3;padding:8px 13px;gap:5px}
+#spatial-lab .sl-prompt {font-size:11px;color:#52616b}
+#spatial-lab .sl-prompt button {background:#e1e5e8;border-radius:3px;font-size:10px;min-height:23px;padding:3px 6px}
+#spatial-lab .sl-tokenlist {min-height:43px;gap:22px;justify-content:flex-start;padding-left:5px}
+#spatial-lab .sl-panel .sl-tokenlist button {font-size:17px;padding:0 2px;color:#3d7189}
+#spatial-lab .sl-panel .sl-tokenlist button[aria-pressed=true] {color:#915421;border-bottom-color:#cb8741;background:transparent}
+#spatial-lab .sl-panel .sl-tokenlist small {font-size:10px;color:#8a949a}
+#spatial-lab .sl-timeline {display:flex;gap:1px;height:21px;min-height:21px;border-bottom:1px solid #98a4ac;padding-top:3px}
+#spatial-lab .sl-timeline button {position:relative;flex:1;padding:0;border:0;border-left:1px solid #aeb8be;border-radius:0;background:#bfced8;min-height:15px;height:15px;font:9px Consolas,monospace;text-align:left;color:#6b7d88}
+#spatial-lab .sl-timeline button.lpu {background:#c6cfb2}
+#spatial-lab .sl-timeline button[aria-pressed=true] {background:#dc944f;border:0;border-left:2px solid #a45a20;color:#663b1b}
+#spatial-lab .sl-timeline button span {position:absolute;left:3px;top:-1px}
+#spatial-lab .sl-progress {height:2px;min-height:2px;background:#b3bec5}
+#spatial-lab .sl-progress span {background:#d39351}
+#spatial-lab .sl-playback {border:0;padding-top:0;min-height:29px}
+#spatial-lab .sl-playback button {min-height:24px;font-size:11px;padding:3px 8px}
+#spatial-lab .sl-playback input {accent-color:#a98059}
+#spatial-lab .sl-diagram {background:#edf0f2;border:1px solid #a9b2ba;box-shadow:0 12px 35px #263b4a30}
+@media(max-width:950px){#spatial-lab .sl-title small{display:none}#spatial-lab .sl-toolbar button{font-size:9px;padding:3px}#spatial-lab .sl-panel{padding:8px}#spatial-lab .sl-panel .sl-tokenlist button{font-size:14px}#spatial-lab .sl-tokenlist{gap:14px}#spatial-lab .sl-timeline button span{font-size:8px}}
+#spatial-lab .sl-scrubbar {display:flex;align-items:center;gap:8px;height:14px;min-height:14px;font-size:9px;color:#78858d}
+#spatial-lab .sl-scrubbar input {flex:1;height:8px;min-height:0;margin:0;accent-color:#b57943;cursor:ew-resize}
+#spatial-lab .sl-scrubbar span {font:10px Consolas,monospace;min-width:42px;text-align:right}

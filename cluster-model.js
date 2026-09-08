@@ -1,4 +1,4 @@
-/* UTF-8 · 四片教学部署、环形归约与片间成本；不假定私有服务的实际部署。 */
+/* UTF-8 · 四片示例部署、环形归约与片间成本；不假定私有服务的实际部署。 */
 (function(root){
  'use strict';const P=root.GROQ_PERFORMANCE||(typeof require!=='undefined'?require('./performance-model.js'):null);
  const defaults={strategy:'hybrid',request:'A',stage:0,laneGbps:30,links:1,linkUtil:.8,hopUs:.35,alignUs:.2,windowKiB:32,windowUs:.08,inFlight:2};
@@ -30,7 +30,7 @@
  function build(input={},raw={}){
   const base=input.steps?input:P.build(input),p=base.p,d=base.dimensions,c=validate(raw),spec=strategies[c.strategy],replica=c.strategy==='replica'&&c.request==='B'?1:0,groups=spec.groups[replica],PP=groups.length,TP=groups[0].length;
   c.stage=Math.min(c.stage,PP-1);const group=groups[c.stage],issues=[];
-  if(d.L<PP)issues.push('层数 L 至少为 '+PP+'，才能使每个流水阶段都有模型层');if(d.H%TP||d.H<TP)issues.push('本教学布局要求 Q 头数 H 能被 '+TP+' 个张量分片整除');if(d.F%TP)issues.push('本教学布局要求 FFN 维度 F 能被 '+TP+' 整除');if(d.V%TP)issues.push('词表大小 V 需要能被 '+TP+' 整除');
+  if(d.L<PP)issues.push('层数 L 至少为 '+PP+'，才能使每个流水阶段都有模型层');if(d.H%TP||d.H<TP)issues.push('本示例布局要求 Q 头数 H 能被 '+TP+' 个张量分片整除');if(d.F%TP)issues.push('本示例布局要求 FFN 维度 F 能被 '+TP+' 整除');if(d.V%TP)issues.push('词表大小 V 需要能被 '+TP+' 整除');
   const chips=[];
   for(const[rep,stages]of spec.groups.entries())for(const[stage,ranks]of stages.entries())for(const[rank,id]of ranks.entries()){
    const size=ranks.length,layerStart=Math.floor(stage*d.L/stages.length),layerEnd=Math.floor((stage+1)*d.L/stages.length),headStart=Math.floor(rank*d.H/size),headEnd=Math.floor((rank+1)*d.H/size),ffStart=Math.floor(rank*d.F/size),ffEnd=Math.floor((rank+1)*d.F/size),kvHeads=[...new Set(Array.from({length:headEnd-headStart},(_,h)=>Math.floor((headStart+h)/(d.H/d.G))))];

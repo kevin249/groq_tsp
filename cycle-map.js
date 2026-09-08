@@ -2,13 +2,28 @@
 (function(root){
  'use strict';const nodes={};
  function add(id,label,x,y,w,h,color='mem',owner='TSP',kind='part'){nodes[id]={id,label,x,y,w,h,color,owner,kind};}
- add('DIE','',2,2,1036,642,'frame','TSP','frame');
- const zones=[['MW0','MXM 0',90],['MW1','MXM 1',90],['SW','SXM',65],['MW','MEM ×44',180],['VX','VXM',150],['ME','MEM ×44',180],['SE','SXM',65],['ME0','MXM 2',90],['ME1','MXM 3',90]];let pos=18;
- for(const [id,label,w]of zones){add('TOP_'+id,label,pos,13,w-6,34,id.startsWith('ME')&&id.length===2||id==='MW'?'mem':id==='VX'?'vxm':id==='SW'||id==='SE'?'sxm':'mxm','TSP','overview');pos+=w;}
- add('WINDOW','西侧切片与中央 VXM · SL 0 的内部观察窗口',93,58,930,28,'host','TSP','caption');
- add('LADDER','20 个 SL',11,61,70,27,'host','TSP','caption');
- for(let s=0;s<20;s++)add('SL'+s,'SL '+s,12,98+(19-s)*24,68,21,'icu','ICU','tile');
- add('NORTH','向北传播',11,584,70,32,'icu','ICU','caption');
+ // SL 行与所有功能切片共用一套坐标；单 SL 细节使用独立镜头。
+ const zones=[['MW0','MXM 0',80,'mxm'],['MW1','MXM 1',80,'mxm'],['SW','SXM 西',64,'sxm'],['MW','MEM ×44',168,'mem'],['VX','VXM',144,'vxm'],['ME','MEM ×44',168,'mem'],['SE','SXM 东',64,'sxm'],['ME0','MXM 2',80,'mxm'],['ME1','MXM 3',80,'mxm']];
+ const rowY=sl=>98+(19-sl)*23,rowHeight=20,unitZone={MEM_A:'MW',MEM_B:'MW',MXM:'MW0',SXM:'SW',VXM:'VX'};
+ add('OV_DIE','',2,2,1036,642,'frame','TSP','frame');
+ add('OV_TITLE','同一 SL 横向贯穿各切片 · 点击行号选中，点击格子展开内部',12,10,1016,29,'host','TSP','caption');
+ add('LADDER','SL',12,51,68,34,'icu','ICU','caption');
+ for(let sl=0;sl<20;sl++){add('SL'+sl,'SL '+sl,12,rowY(sl),68,rowHeight,'icu','ICU','sl-label');nodes['SL'+sl].sl=sl;}
+ let pos=94;
+ for(const [z,title,w,color] of zones){
+  const owner=Object.keys(unitZone).find(u=>unitZone[u]===z)||'TSP';
+  add('TOP_'+z,title,pos,51,w-6,34,color,owner,'overview');
+  for(let sl=0;sl<20;sl++){const id='GRID_'+z+'_'+sl;add(id,'',pos,rowY(sl),w-6,rowHeight,color,owner,'sl-cell');Object.assign(nodes[id],{sl,zone:z});}
+  add('OV_ICU_'+z,z==='MW'||z==='ME'?'ICU ×44':'ICU',pos,598,w-6,36,'icu',owner,'overview-icu');pos+=w;
+ }
+ add('OV_NOTE','每格是 SL 与功能切片的交点；MEM 折叠显示。紫框：指令到达；底色：数据 / 运算状态。',94,565,928,25,'host','TSP','caption');
+ add('NORTH','逐拍北移',12,590,68,44,'icu','ICU','caption');
+ // 原有寄存器与算术窗口保持坐标关系，整体移入所选 SL 的独立视野。
+ const detailOffset=1018;
+ add('DIE','',1102,2,946,642,'frame','TSP','frame');
+ add('WINDOW','SL 0 内部 · 西侧切片与中央 VXM 的展开窗口',1112,12,928,34,'host','TSP','caption');
+ add('DETAIL_NOTE','以下所有 MAC、bank、ALU 与 SR 均属于所选 SL 的观察窗口；内部行号不是 SL 编号。',1112,56,928,27,'host','TSP','caption');
+ const detailStart=new Set(Object.keys(nodes));
  const frames=[['MXM','MXM · 4×4 阵列窗口',94,256,'mxm'],['SXM','SXM',362,108,'sxm'],['MEM','MEM · 两组字节切片',482,244,'mem'],['VXM','VXM · 中央向量单元',738,284,'vxm']];
  for(const [id,title,x,w,color]of frames){add(id+'_FRAME','',x,95,w,314,color,id,'frame');add(id+'_TITLE',title,x+6,102,w-12,30,color,id,'title');}
  add('WEIGHT','权重缓冲 · 等待 LW',104,140,236,29,'mem','MXM');add('PLANE','权重阵列 · 等待 IW',104,177,236,28,'mxm','MXM');
@@ -24,6 +39,8 @@
  for(const [bus,row,label]of [['X',0,'sX · 数据'],['W',1,'sW · 权重 / 第二路'],['Y',2,'sY · 结果']]){const y=426+row*42;add('BUS_'+bus,label,94,y,136,35,bus==='W'?'mxm':bus==='Y'?'sxm':'stream','SR','title');for(let j=0;j<=6;j++)add(bus+j,'SR '+j+' · 空',238+j*113,y,106,35,bus==='W'?'mxm':'stream','SR','register');}
  add('STREAM_NOTE','SR 槽沿传输方向编号 · 相邻槽 1 拍；折叠路径，不以画框距离推断物理跳数',94,553,928,24,'host','SR','caption');
  for(const [i,unit]of ['MEM_A','MEM_B','MXM','SXM','VXM'].entries()){const x=94+i*187;add('ICU_'+unit,unit.replace('_',' ')+' · ICU',x,586,177,45,'icu',unit,'icu');}
- const focus={all:{x:0,y:0,w:1040,h:650},mxm:{x:88,y:91,w:270,h:322},memory:{x:476,y:91,w:256,h:322},sxm:{x:354,y:91,w:124,h:322},vxm:{x:732,y:91,w:296,h:322},stream:{x:88,y:417,w:942,h:165},icu:{x:88,y:573,w:942,h:65}};
- const api={nodes,width:1040,height:650,focus};root.GROQ_CYCLE_MAP=api;if(typeof module!=='undefined')module.exports=api;
+ for(const [id,n] of Object.entries(nodes))if(!detailStart.has(id))n.x+=detailOffset;
+ const shifted=(x,y,w,h)=>({x:x+detailOffset,y,w,h});
+ const focus={all:{x:0,y:0,w:1040,h:650},detail:{x:1100,y:0,w:950,h:650},mxm:shifted(88,91,270,322),memory:shifted(476,91,256,322),sxm:shifted(354,91,124,322),vxm:shifted(732,91,296,322),stream:shifted(88,417,942,165),icu:shifted(88,573,942,65)};
+ const api={nodes,width:2050,height:650,focus,zones,unitZone,rowY,rowHeight,detailOffset};root.GROQ_CYCLE_MAP=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

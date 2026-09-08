@@ -1,59 +1,73 @@
-# Groq TSP 交互课堂
+# Groq LPX 三维可视化解析
 
-**v1.0.0 · 初始版本**。用一个亮色 HTML 页面，展示 Prompt 如何经过主机、芯片与片间连接，完成 Attention / FFN 计算并返回 Token。左侧显示软件流程及指令、数据，中间演示硬件执行，右侧同步显示时间、算量、流量和带宽。
+以“谁是世界上最厉害的大模型？”为入口，观察真实 Token、模型网络、GPU / LPX 分工，以及机架、服务器、芯片中的数据与控制操作。
 
-## 打开与使用
+直接打开 [Groq_TSP_交互讲解.html](Groq_TSP_交互讲解.html)。默认是参考 Blender 分区方式的亮色工作台：顶部工作区、左侧执行树、中央三维视口、右侧属性与性能、底部时间轴。Three.js 渲染实体部件，菜单仍是同一场景中的 CSS3DObject，通过相机朝向补偿保持可读。运行所需的脚本、材质生成代码、几何、样式、Token 快照和 Mermaid 网络图均已内嵌。
 
-直接打开 [Groq_TSP_交互讲解.html](Groq_TSP_交互讲解.html)。脚本、样式和 Mermaid 图形已全部内嵌，动画运行无需联网或安装依赖；资料按钮打开公开网上原文，需要联网。
+默认“完整请求”只接收一次 Prompt，经过 GPU Prefill 后进入 GPU → Groq LPX FFN / MoE → GPU → 用户的 Decode 路径。传输是有限的一次飞行，到达后驻留；结束后停止，需要明确重置才会重新输入。“下一 Token”保留上下文，直接进入 Decode，不重复原句的接收、分词与 Prefill。单独选择 Prefill 时，查看的是全部在 GPU 执行的前缀处理。
 
-| 课堂 | 可观察内容 | 建议操作 |
-| --- | --- | --- |
-| Prefill / Decode 流程 | 八个完整环节、42 个操作；主机接入、算子、C2C、采样与下一轮 | 点击左侧环节，再选择具体操作；用底部按钮逐步或连续播放 |
-| 逐周期执行 | 当前整数周期的指令和数据、ICU、SRAM、SR、MXM / VXM / SXM | 前后一拍、跳转事件、改变 Superlane、回退重放 |
-| Attention / FFN 深入 | 34 步计算链、可手算小例子、硬件内部展开与性能公式 | 展开 MXM / MAC，查看 QK、Softmax、PV 和 SwiGLU 的中间数值 |
+## Prompt 与真实分词
 
-中间画布可选择单颗芯片、四片总览或跟随当前传输。右侧公式、模型参数和部署说明在同页详情面板展开，打开时暂停播放。方向键用于前后步骤或单拍，空格播放 / 暂停；窄屏通过软件、硬件、性能标签切换。
+分别调用两个模型的官方 tokenizer，并执行官方 Jinja 对话模板。当前句子的正文均为以下 6 个 Token：
 
-## 教学范围
+| 字片 | Token ID |
+| --- | ---: |
+| 谁是 | 121232 |
+| 世界上最 | 114314 |
+| 厉害 | 102169 |
+| 的大 | 97796 |
+| 模型 | 103725 |
+| ？ | 10992 |
 
-- 完整流程包含外部请求、CPU 分词、PCIe / DMA、词嵌入、QKV、RoPE、KV、Attention、FFN、模型层与流水段、词表头、主机采样及返回。
-- 四片教学板支持 PP2 × TP2、PP4、TP4 和两个模型副本；展示激活分发、部分和归约与阶段交接。请求保持副本绑定，历史 KV 留在所属芯片。
-- 六类算子专题提供 30 个操作，区分矩阵、向量、归约、重排、存储和控制。Q 头与分片属于软件分工，MAC 位于 MXM，逐元素及归约算术同属 VXM。
-- 逐周期课堂使用独立的确定性教学模型。参数化请求分镜、逐周期模型和手算窗口采用各自的时间与数值规模，不宣称复现真实芯片 trace 或 GroqCloud 私有部署。
+单条 user 消息、关闭 thinking、添加 assistant 生成前缀时，完整输入为 18 个 Token。底部点击字片可追踪对应 ID 与激活；“正文 6 / 输入 18”展开全部模板标记。续写句“没有单一答案，要看任务和评测。”是给定回放，不是本页执行权重生成的答案。
 
-具体硬件映射、FLOPs、访存、C2C、容量及 TTFT / TPOT 的计算口径见 [设计说明](docs/设计说明.md)。
+## 空间与操作
 
-## 项目组织
-
-| 位置 | 内容 |
+| 位置 | 内容与操作 |
 | --- | --- |
-| `Groq_TSP_交互讲解.html` | 可独立分发的完整网页 |
-| `index.html` | 开发入口，按顺序加载同目录脚本与样式 |
-| 根目录的 `.js` / `.css` 与 `cycle-panel.html` | 当前三个课堂的模型、分镜、渲染、播放和界面源码 |
-| `hardware/`、`hardware-diagrams.js` | Mermaid 源图、SVG 及内嵌图形和坐标包 |
-| [教学方案](docs/教学方案.md) | 学习目标、完整流程、交互方式与验收口径 |
-| [设计说明](docs/设计说明.md) | 硬件归属、数据和指令、数值链与性能公式 |
-| [验证说明](docs/验证说明.md) | 检查命令、75 组覆盖、报告位置与限制 |
-| `tools/` | 图形生成、离线打包与自动检查工具 |
-| `reports/` | 检查时生成的临时报告，已忽略，不进入版本库 |
+| 左侧悬浮菜单 | 模型、Prefill / Decode、任意模型层、完整分组流程、同时显示的指令与数据 |
+| 中央实体 | 外部服务 / GPU、32 槽 LPX 机架、单托盘 8 LPU、片间互联、芯片内部 14 个公开区域 |
+| 右侧悬浮菜单 | 当前算子、张量形状、矩阵 FLOPs、权重 / 激活字节、资源下界、专家和精度选择 |
+| 底部悬浮菜单 | 真实字片与 ID、播放 / 暂停、前后操作、速度、给定续写的下一位置 |
 
-仓库维护当前可运行版本。过程草稿、旧版网页、参考截图和废弃工具不进入初始版本；文档使用固定名称维护，迭代历史交由 Git 记录。论文、讲稿、产品规格与外部研究依据全部使用下面的公开网上链接。
+拖动旋转、滚轮缩放，点击硬件检查部件，双击槽位或 LPU 深入。“展开”连续抽出托盘或移开服务器上盖、冷板。“跟随”让镜头跟随所选算子的执行位置。底部时间轴可选择算子、拖动当前动作进度；“动作回放”的秒数是视觉时间，不是芯片 latency。网络总览使用 Mermaid，机械实体采用金属、PCB、鳍片、连接器和小元件网格。
 
-## 构建与检查
+Rubin GPU 根据 [NVIDIA 官方结构](https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/)及[封装对照图](https://developer-blogs.nvidia.com/wp-content/uploads/2026/03/LPX05-Rubin_GPU_and_Groq_3_LPU.webp)重建为双计算裸片、八组 HBM4，替代通用板卡外形。权重 / KV / 状态映射到 HBM 与存储层级，矩阵乘映射到 SM 内 Tensor Core，向量与 Softmax 映射到相应执行资源。图中位置表示资源归属，具体 SM、HBM 栈和存储地址分配未公开，不伪造实机调度。
 
-在仓库根目录执行；所有源文件和文档采用 UTF-8。
+## 两模型的独立网络
 
-| 操作 | Windows 命令 |
+- Qwen3.8-27B：64 层、D=5120；48 层 DeltaNet、16 层 Gated Attention；24Q / 4KV、Dense SwiGLU 中间维 17408、普通残差与最终 RMSNorm。
+- Qwen3.8-Flash-Next：48 层、D=2560；四路门控残差，第 2 层 PLE n-gram 注入；36 层 DeltaNet、12 层 QSA；512 个路由专家选 10 个，加独立共享专家，最后为门控残差混合。
+
+依据 NVIDIA 的 AFD 方案，Prefill 在 GPU 完成所有层；Decode 的 Attention、缓存与残差留在 GPU，FFN / MoE 的隐藏激活送入 LPX，再返回 GPU。进入 LPX 的是向量，不是原始文本。网络的具体分支见 [27B Mermaid 源图](hardware/network27.mmd) 与 [Flash-Next Mermaid 源图](hardware/networkflash.mmd)。
+
+模型与部署是两个层次：27B 的 TP2、Flash-Next 的 EP8 / EP16 是解释数据去向的示例分配；专家编号不是本句推理得到的实际 Top-10。物理外形参照公开图，未公开的制造尺寸、板内实际布线与 GPU 内部分区不视为已知。LPX 的单条指令周期未公开，界面不将动画帧或播放秒数冒充硬件 cycle。
+
+## 源码与构建
+
+| 文件 | 用途 |
 | --- | --- |
-| 仅更新独立网页 | `npm.cmd --prefix tools run pack` |
-| 运行完整检查 | `npm.cmd --prefix tools run check` |
-| 单独核对资料引用 | `npm.cmd --prefix tools run check:references` |
-| 安装图形生成依赖 | `npm.cmd --prefix tools ci` |
-| 重新生成 Mermaid 图形并打包 | `npm.cmd --prefix tools run build` |
+| index.html / Groq_TSP_交互讲解.html | 开发入口 / 可独立分发的网页 |
+| spatial-lab-source.mjs / spatial-hardware.mjs / rubin-hardware.mjs | 场景、相机、空间菜单、数据层 / 机架与服务器 / Rubin 封装 |
+| spatial-lab.js / spatial-lab.css | 内嵌 Three.js 的浏览器包 / 空间界面样式 |
+| token-samples.js / network-model.js | 官方分词及模板快照 / 两模型的操作、形状与成本 |
+| lpx-model.js / hardware/ | LPX 规格与示例分配 / Mermaid 源图和 SVG |
+| [解析方案](docs/解析方案.md)、[设计说明](docs/设计说明.md)、[验证说明](docs/验证说明.md) | 方案、口径和验证范围 |
 
-打包和检查只需要 Node.js。重新生成图形需要锁定版本的 Mermaid、Playwright 和可用 Chromium 浏览器；可通过 `GROQ_RENDER_BROWSER` 指定浏览器程序。Linux / macOS 将 `npm.cmd` 替换为 `npm`。
+仓库保留第一代 TSP 的独立周期模型、手算例子及原有解析视图源码；它们不充当 Groq 3 的实机 trace。
 
-初始版本检查覆盖数值、分片、通信、动画、逐周期状态、完整请求、文档链接和离线资源。检查使用真实应用脚本与时钟，以及程序构造的界面节点；不包含教学网页的浏览器点击、截图或视觉验收。
+在仓库根目录运行，所有文件均为 UTF-8：
+
+| 操作 | 命令 |
+| --- | --- |
+| 安装锁定的开发依赖 | npm.cmd --prefix tools ci |
+| 更新独立 HTML（含三维包） | npm.cmd --prefix tools run pack |
+| 重新生成 Mermaid 与三维包 | npm.cmd --prefix tools run build |
+| 从官方网址更新分词快照 | npm.cmd --prefix tools run build:tokens |
+| 核心与引用检查 | npm.cmd --prefix tools run check |
+| 网络 / Token 与真实 WebGL 浏览器检查 | npm.cmd --prefix tools run check:immersive |
+
+构建需要 tools 中的依赖；打开成品 HTML 不需要安装工具。浏览器检查默认使用 Windows Edge，可用 SPATIAL_BROWSER 指定 Chromium 程序。测试报告和截图写入已忽略的 reports、预览目录。Three.js 的 MIT 许可原文随浏览器包保留。
 
 ## 公开参考资料
 
@@ -61,6 +75,9 @@
 
 | 资料 | 网上入口与用途 |
 | --- | --- |
+| NVIDIA · Groq 3 LPX | [官方文章](https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/)：机架、托盘、芯片结构、AFD 及公开带宽 |
+| Qwen3.8-27B | [官方模型配置](https://huggingface.co/Qwen/Qwen3.8-27B/blob/main/config.json)：层数、隐藏维、FFN 与混合 Attention 结构 |
+| Qwen3.8-Flash-Next | [官方模型配置](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/main/config.json)、[模型卡](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)：MoE、QSA、专家数量与参数组成 |
 | ISCA 2020 · Think Fast | [作者公开 PDF](http://pkamath.com/publications/papers/tsp-isca20.pdf)、[出版 DOI](https://doi.org/10.1109/ISCA45697.2020.00023)：功能切片、流寄存器、ICU、PCIe / DMA |
 | ISCA 2022 · Software-defined TSM | [出版 DOI](https://doi.org/10.1145/3470496.3527405)：多芯片互连与软件调度 |
 | ASAP 2022 · Answer Fast | [作者预印本](https://arxiv.org/abs/2206.11062)：Attention、FFN 与主机通信 |

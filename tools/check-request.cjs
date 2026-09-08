@@ -115,5 +115,5 @@ check('当前指令与数据同框常驻，翻动作只改变当前分镜且不�
  const html=read('index.html');assert.ok(html.includes('data-workspace="cluster"'));assert.ok(html.includes('id="cluster-request-overview"'));assert.ok(html.includes('id="single-request-overview"'));assert.ok(html.indexOf('request-layout.css')>html.indexOf('cycle.css'));
 });
 
-writeReport('完整请求流程.md','# 完整请求流程检查报告\n\n'+logs.map(n=>'- '+n+'。').join('\n')+'\n\n共 '+logs.length+' 组检查，'+configCount+' 种模式 / 部署 / 请求 / 流水段组合，'+phaseCount+' 个分镜、'+packetCount+' 个数据标记的端点。其余模型、动画、逐周期与打包检查由统一检查入口执行。\n\n应用脚本与时钟真实执行，界面和图形节点使用程序替身；检查不包含教学网页的浏览器点击、截图或视觉验收。新流程属于参数化分镜课堂；保留的逐周期课堂仍是教学时序模型，没有据此宣称真实芯片 trace。\n');
+writeReport('完整请求流程.md','# 完整请求流程检查报告\n\n'+logs.map(n=>'- '+n+'。').join('\n')+'\n\n共 '+logs.length+' 组检查，'+configCount+' 种模式 / 部署 / 请求 / 流水段组合，'+phaseCount+' 个分镜、'+packetCount+' 个数据标记的端点。其余模型、动画、逐周期与打包检查由统一检查入口执行。\n\n应用脚本与时钟真实执行，界面和图形节点使用程序替身；检查不包含交互网页的浏览器点击、截图或视觉验收。新流程属于参数化分镜视图；保留的逐周期视图仍是模拟时序模型，没有据此宣称真实芯片 trace。\n');
 console.log('全部 '+logs.length+' 组完整流程检查通过。');

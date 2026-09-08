@@ -1,5 +1,5 @@
-<!-- UTF-8 · 第九版逐周期课堂，嵌入 index.html 后可离线分发。 -->
-<div id="cycle-context" class="lab-context"><span class="cycle-mode-label">逐周期教学模型</span><span>相邻 SR：1 拍</span><span>20 个 superlane：逐拍传播指令</span><button id="cycle-assumptions">时序参数与依据</button><span class="cycle-context-note">不是实测芯片 trace</span></div>
+<!-- UTF-8 · 第九版逐周期视图，嵌入 index.html 后可离线分发。 -->
+<div id="cycle-context" class="lab-context"><span class="cycle-mode-label">逐周期示例模型</span><span>相邻 SR：1 拍</span><span>20 个 superlane：逐拍传播指令</span><button id="cycle-assumptions">时序参数与依据</button><span class="cycle-context-note">不是实测芯片 trace</span></div>
 <main id="cycle-main" class="lab-grid cycle-layout">
  <aside class="software-pane"><div class="pane-heading"><div><span class="step-kicker">01 / 同拍观察</span><h2>指令与数据</h2></div><span id="cycle-left-clock" class="cycle-stamp">C 000</span></div>
   <label class="cycle-picker">运算微程序<select id="cycle-lesson"></select></label>
@@ -9,8 +9,8 @@
   <p class="pane-footnote">上方对应所选 SL；时间表记录各 ICU 的发射拍。</p>
  </aside>
  <section class="lab-left cycle-hardware"><div class="operation-heading"><div><span class="step-kicker">02 / TSP 硬件内部</span><h1 id="cycle-title">Q / K / V 投影</h1></div><button id="cycle-values-button" class="read-values">数据明细</button></div>
-  <section class="lab-hardware"><div class="hardware-toolbar cycle-hardware-toolbar"><label>观察 <select id="cycle-sl" aria-label="观察 superlane"></select></label><label>展开 <select id="cycle-focus"><option value="all">全部硬件</option><option value="mxm">MXM 内部</option><option value="memory">SRAM / 地址</option><option value="sxm">SXM 重排</option><option value="vxm">VXM / ALU</option><option value="stream">逐跳流寄存器</option><option value="icu">独立 ICU</option></select></label><button id="cycle-fit">还原全图</button></div>
-   <div class="cycle-hardware-note"><span id="cycle-format"></span><span>区域归属依据原论文；内部窗口缩减显示</span></div>
+  <section class="lab-hardware"><div class="hardware-toolbar cycle-hardware-toolbar"><label>观察 <select id="cycle-sl" aria-label="观察 superlane"></select></label><label>视图 <select id="cycle-focus"><option value="all">SL 对齐总览</option><option value="detail">所选 SL 内部</option><option value="mxm">MXM 内部</option><option value="memory">SRAM / 地址</option><option value="sxm">SXM 重排</option><option value="vxm">VXM / ALU</option><option value="stream">逐跳流寄存器</option><option value="icu">独立 ICU</option></select></label><button id="cycle-fit">SL 总览</button></div>
+   <div class="cycle-hardware-note"><span id="cycle-format"></span><span>总览按 SL 对齐；细节按所选 SL 展开</span></div>
    <div id="cycle-canvas" class="cycle-canvas" aria-label="Mermaid 生成的逐周期硬件图"></div>
    <div class="lab-legend"><span><i class="dot violet"></i>指令到达</span><span><i class="dot blue"></i>有效数据</span><span><i class="dot amber"></i>计算 / 权重</span><span><i class="dot green"></i>结果写回</span></div>
   </section>
@@ -21,9 +21,9 @@
   <div class="ledger-metrics"><div><span>所选 SL 写回</span><strong id="cycle-first-latency">—</strong></div><div><span>全部 20 SL 写回</span><strong id="cycle-total-latency">—</strong></div><div><span>本拍 SRAM 数据</span><strong id="cycle-edge-bytes">0 B</strong></div><div><span>本拍读写带宽</span><strong id="cycle-edge-bandwidth">0 GB/s</strong></div></div>
   <section class="live-time"><span>数据 SRAM 累计读写 · 所有 SL</span><strong id="cycle-total-bytes">0 B</strong><small id="cycle-average">平均 0 GB/s</small><progress id="cycle-progress" class="live-progress" max="100" value="0" aria-label="微程序完成进度"></progress><small id="cycle-completion">0 / 20 个 SL 完成</small></section>
   <section class="cycle-result"><span>所选 SL 的 SRAM 输出</span><strong id="cycle-result">尚未写回</strong></section>
-  <p class="cycle-scope-note">四元素微程序窗口；完整层、主机和 C2C 的延迟在其他课堂中查看。</p>
+  <p class="cycle-scope-note">四元素微程序窗口；完整层、主机和 C2C 的延迟在其他视图中查看。</p>
   <div class="performance-actions"><button id="cycle-formulas" class="primary-button">时序公式与带宽计算</button></div>
  </aside>
 </main>
 <footer id="cycle-controls" class="lab-controls"><span id="cycle-progress-label">C 0 / 40</span><button id="cycle-prev" title="向左方向键">−1 拍</button><button id="cycle-play" class="primary-button">播放</button><button id="cycle-next" title="向右方向键">＋1 拍</button><button id="cycle-prev-event" class="cycle-event-button">上一事件</button><button id="cycle-next-event" class="cycle-event-button">下一事件</button><label class="sr-only" for="cycle-range">定位整数周期</label><input id="cycle-range" type="range" min="0" max="40" step="1" value="0"><label class="cycle-speed-label">观看速度 <select id="cycle-speed"><option value="1000">1 拍 / 秒</option><option value="500" selected>2 拍 / 秒</option><option value="125">8 拍 / 秒</option><option value="31.25">32 拍 / 秒</option></select></label><button id="cycle-restart">从 C 0 重播</button><span id="cycle-play-state">整数时钟</span></footer>
-<dialog id="cycle-dialog" data-interactive="true"><header class="drawer-heading"><div><span class="step-kicker">第九版 · 可核对的教学时序</span><h2 id="cycle-dialog-title">时序说明</h2></div><button id="cycle-dialog-close" aria-label="关闭逐周期详情">×</button></header><div id="cycle-dialog-body"></div></dialog>
+<dialog id="cycle-dialog" data-interactive="true"><header class="drawer-heading"><div><span class="step-kicker">逐周期 · 可核对的模拟时序</span><h2 id="cycle-dialog-title">时序说明</h2></div><button id="cycle-dialog-close" aria-label="关闭逐周期详情">×</button></header><div id="cycle-dialog-body"></div></dialog>

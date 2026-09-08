@@ -1,4 +1,4 @@
-/* UTF-8 · 多片分工、归约和通信成本的纯模型验证；不打开教学网页。 */
+/* UTF-8 · 多片分工、归约和通信成本的纯模型验证；不打开交互网页。 */
 'use strict';
 const {writeReport}=require('./report.cjs');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
@@ -75,20 +75,20 @@ check('所有部署、模式、阶段和动作都连接到实际 Mermaid 硬件�
  const relay=M.path(0,3,C.route);for(const key of ['C1_SER_RX','C1_RX','C1_INPUT','C1_TX','C1_SER_TX'])assert.ok(relay.includes(key));
 });
 check('四片硬件分区、缓存归属与物理连接几何保持明确',()=>{
- assert.equal(Object.keys(M.nodes).length,295);const contains=(a,b)=>b.x>=a.x&&b.y>=a.y&&b.x+b.w<=a.x+a.w&&b.y+b.h<=a.y+a.h;
- for(let i=0;i<4;i++){for(const [zone,keys]of [['MEMW',['W','INPUT']],['MEME',['KV','KVNEW']],['VX',['ALU']]])for(const k of keys)assert.ok(contains(M.nodes['C'+i+'_'+zone],M.nodes['C'+i+'_'+k]),k);for(const key of M.zones)assert.ok(M.nodes['C'+i+'_'+key]);}
+ assert.deepEqual(Object.keys(M.nodes).sort(),Object.keys(G.cluster6.nodes).sort());const contains=(a,b)=>b.x>=a.x&&b.y>=a.y&&b.x+b.w<=a.x+a.w&&b.y+b.h<=a.y+a.h;
+ for(let i=0;i<4;i++){for(const [zone,keys]of [['MEMW',['W','INPUT']],['MEME',['KV','KVNEW']],['VX',['ALU']]])for(const k of keys)assert.equal(M.nodes['C'+i+'_'+k].anchor,'C'+i+'_'+zone,k);for(const key of M.zones)assert.ok(M.nodes['C'+i+'_'+key]);}
  for(const n of Object.values(M.nodes))assert.ok(n.w>0&&n.h>0&&n.x>=0&&n.y>=0&&n.x+n.w<=M.width&&n.y+n.h<=M.height);
  const chips=M.origins.map((_,i)=>M.nodes['C'+i+'_DIE']);for(let a=0;a<4;a++)for(let b=a+1;b<4;b++)assert.ok(chips[a].x+chips[a].w<=chips[b].x||chips[b].x+chips[b].w<=chips[a].x||chips[a].y+chips[a].h<=chips[b].y||chips[b].y+chips[b].h<=chips[a].y);
  for(const [a,b]of C.edges){assert.ok(M.nodes[M.port(a,b)]);assert.ok(M.nodes[C.edgeKey(a,b)]);assert.ok(M.nodes[M.port(b,a)]);}
 });
 check('亮色入口、中文 UTF-8、全部脚本语法和独立 HTML 资源一致',()=>{
- const html=read('index.html'),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),scripts=[...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);assert.equal(scripts.length,23);
+ const html=read('index.html'),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]),scripts=[...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);assert.equal(scripts.length,30);assert.ok(scripts.includes('spatial-camera.js')&&scripts.includes('groq3-space.js')&&scripts.includes('lpx-model.js')&&scripts.includes('lpx-scene.js')&&scripts.includes('spatial-lab.js'));
  for(const m of read('cluster-app.js').matchAll(/(?:\$|\btxt)\('([^']+)'(?:\)|,)/g))assert.ok(ids.includes(m[1]),m[1]);
  assert.ok(html.includes('name="color-scheme" content="light"'));assert.ok(html.includes('class="lab light" data-workspace="cluster"'));assert.ok(html.indexOf('light.css')>html.indexOf('cluster.css'));assert.ok(html.includes('class="skip"'));
- const decoder=new TextDecoder('utf-8',{fatal:true});for(const f of ['index.html','README.md','docs/设计说明.md','docs/教学方案.md','light.css','cluster.css',...scripts]){const text=decoder.decode(fs.readFileSync(path.join(root,f)));assert.ok(!text.includes('\uFFFD'));if(f.endsWith('.js'))new vm.Script(text,{filename:f});}
+ const decoder=new TextDecoder('utf-8',{fatal:true});for(const f of ['index.html','README.md','docs/设计说明.md','docs/解析方案.md','light.css','cluster.css',...scripts]){const text=decoder.decode(fs.readFileSync(path.join(root,f)));assert.ok(!text.includes('\uFFFD'));if(f.endsWith('.js'))new vm.Script(text,{filename:f});}
  const standalone=read('Groq_TSP_交互讲解.html'),inline=[...standalone.matchAll(/<script>\n([\s\S]*?)\n<\/script>/g)].map(m=>m[1]);assert.equal(inline.length,scripts.length);inline.forEach((s,i)=>assert.equal(s,read(scripts[i]).replace(/<\/script/gi,'<\\/script')));assert.ok(!/<script[^>]+src=|<link[^>]+rel="stylesheet"/i.test(standalone));
  const sourceLinks=[...read('cluster-app.js').matchAll(/<a\b[^>]*href="([^"]+)"/g)];assert.equal(sourceLinks.length,2);for(const x of sourceLinks)assert.ok(/^https?:\/\//.test(x[1]),'多芯片依据必须引用公开网上资料');
 });
 const m=C.build(),d=C.build({mode:'decode'});
-writeReport('多芯片通信.md','# 多芯片分工与通信检查报告\n\n'+logs.map(s=>'- '+s+'。').join('\n')+`\n\n共 ${logs.length} 组检查，覆盖 ${phaseCount} 个多芯片分镜状态、${packetCount} 个数据标记；包含两种推理模式、四种部署、两个请求视角和所有阶段。单片课堂另有 15 组既有检查，记录见 [性能计算](性能计算.md)。\n\n默认两段 × 两片方案的有效单向链路为 ${P.num(m.bandwidth/1e9)} GB/s，Prefill 单次归约全组有效发送 ${P.bytes(m.reduction.totalSent)}，Decode 为 ${P.bytes(d.reduction.totalSent)}。默认 L 层路径预算分别为 ${P.time(m.pipelineLow)} 和 ${P.time(d.pipelineLow)}，只含层内计算、两次归约与阶段交接；不是完整 TTFT 或设备实测。\n\n检查为纯模型计算、数据依赖、硬件节点映射、静态几何、UTF-8、脚本语法和离线打包检查。未执行教学网页的浏览器点击、截图、DOM 检查或视觉回归测试。公开硬件机制引用 ISCA 2020 与 Hot Chips 34 的网上原文；自动化检查验证引用形式，不验证站点实时可用性。\n`);
+writeReport('多芯片通信.md','# 多芯片分工与通信检查报告\n\n'+logs.map(s=>'- '+s+'。').join('\n')+`\n\n共 ${logs.length} 组检查，覆盖 ${phaseCount} 个多芯片分镜状态、${packetCount} 个数据标记；包含两种推理模式、四种部署、两个请求视角和所有阶段。单片视图另有 15 组既有检查，记录见 [性能计算](性能计算.md)。\n\n默认两段 × 两片方案的有效单向链路为 ${P.num(m.bandwidth/1e9)} GB/s，Prefill 单次归约全组有效发送 ${P.bytes(m.reduction.totalSent)}，Decode 为 ${P.bytes(d.reduction.totalSent)}。默认 L 层路径预算分别为 ${P.time(m.pipelineLow)} 和 ${P.time(d.pipelineLow)}，只含层内计算、两次归约与阶段交接；不是完整 TTFT 或设备实测。\n\n检查为纯模型计算、数据依赖、硬件节点映射、静态几何、UTF-8、脚本语法和离线打包检查。未执行交互网页的浏览器点击、截图、DOM 检查或视觉回归测试。公开硬件机制引用 ISCA 2020 与 Hot Chips 34 的网上原文；自动化检查验证引用形式，不验证站点实时可用性。\n`);
 console.log(`全部 ${logs.length} 组多芯片检查通过。`);

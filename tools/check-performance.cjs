@@ -1,4 +1,4 @@
-/* UTF-8 · 检查算量、流量、估算边界和硬件分镜；不打开教学网页。 */
+/* UTF-8 · 检查算量、流量、估算边界和硬件分镜；不打开交互网页。 */
 'use strict';
 const {writeReport}=require('./report.cjs');const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const P=require('../performance-model.js'),L=require('../performance-lessons.js'),A=require('../hardware-atlas-map.js'),root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
@@ -79,10 +79,10 @@ check('硬件展开保留九个区域顺序，MAC 内部不会遮挡来源阵列
 });
 check('UTF-8、脚本语法、页面标识符、离线内嵌资源与源码一致',()=>{
  const html=read('index.html'),scripts=[...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m=>m[1]),ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);
- const decoder=new TextDecoder('utf-8',{fatal:true});for(const file of ['index.html','performance.css','README.md','docs/设计说明.md','docs/教学方案.md',...scripts]){const txt=decoder.decode(fs.readFileSync(path.join(root,file)));assert.ok(!txt.includes('\uFFFD'),file);if(file.endsWith('.js'))new vm.Script(txt,{filename:file});}
+ const decoder=new TextDecoder('utf-8',{fatal:true});for(const file of ['index.html','performance.css','README.md','docs/设计说明.md','docs/解析方案.md',...scripts]){const txt=decoder.decode(fs.readFileSync(path.join(root,file)));assert.ok(!txt.includes('\uFFFD'),file);if(file.endsWith('.js'))new vm.Script(txt,{filename:file});}
  for(const m of read('performance-app.js').matchAll(/(?:\$|\btext)\('([^']+)'/g))assert.ok(ids.includes(m[1]),'页面缺少 '+m[1]);assert.ok(!html.includes('</option '));
  const standalone=read('Groq_TSP_交互讲解.html'),inline=[...standalone.matchAll(/<script>\n([\s\S]*?)\n<\/script>/g)].map(m=>m[1]);assert.equal(inline.length,scripts.length);inline.forEach((s,i)=>assert.equal(s,read(scripts[i]).replace(/<\/script/gi,'<\\/script')));assert.ok(!/<script[^>]+src=|<link[^>]+rel="stylesheet"/i.test(standalone));assert.ok(!/<(?:img|iframe|script|link)[^>]+(?:src|href)="https?:/i.test(html));
  for(const key of Object.keys(A.specs))assert.ok(G.atlas.nodes[key],key);assert.ok(read('performance.css').includes('grid-template-columns:minmax(0,1fr) 430px'));
  for(const source of P.sources){assert.ok(/^https?:\/\//.test(source.url),source.name+' 必须引用公开网上资料');assert.ok(!Object.hasOwn(source,'local'),source.name+' 不得提供本地资料入口');}
 });
-const defaultModel=P.build(),decode=P.build({mode:'decode'});writeReport('性能计算.md','# 性能与数值模型检查报告\n\n'+log.map(x=>'- '+x+'。').join('\n')+`\n\n共 ${count} 组检查；两种模式 ${phases} 个分镜、${packets} 个数据标记的硬件端点完整。默认单片教学模型：权重 ${P.bytes(defaultModel.capacity.weights)}，一层 Prefill ${P.time(defaultModel.layer.low)}，Decode ${P.time(decode.layer.low)}。这些是默认参数下的成本模型结果，不是设备实测。\n\n检查覆盖纯数值模型、资源映射、几何约束、UTF-8、脚本语法与离线打包；未执行教学网页的浏览器点击、截图或视觉回归测试。硬件规格与接入方式的依据均使用公开原文的网上链接；自动化检查验证引用形式，不验证站点实时可用性。\n`);console.log('全部 '+count+' 组检查通过。');
+const defaultModel=P.build(),decode=P.build({mode:'decode'});writeReport('性能计算.md','# 性能与数值模型检查报告\n\n'+log.map(x=>'- '+x+'。').join('\n')+`\n\n共 ${count} 组检查；两种模式 ${phases} 个分镜、${packets} 个数据标记的硬件端点完整。默认单片示例模型：权重 ${P.bytes(defaultModel.capacity.weights)}，一层 Prefill ${P.time(defaultModel.layer.low)}，Decode ${P.time(decode.layer.low)}。这些是默认参数下的成本模型结果，不是设备实测。\n\n检查覆盖纯数值模型、资源映射、几何约束、UTF-8、脚本语法与离线打包；未执行交互网页的浏览器点击、截图或视觉回归测试。硬件规格与接入方式的依据均使用公开原文的网上链接；自动化检查验证引用形式，不验证站点实时可用性。\n`);console.log('全部 '+count+' 组检查通过。');

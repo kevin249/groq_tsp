@@ -13,7 +13,7 @@ function collect(dir){
  for(const item of fs.readdirSync(dir,{withFileTypes:true})){
   const full=path.join(dir,item.name);
   if(item.isDirectory()){if(!skipped.has(item.name))collect(full);}
-  else if(/\.(?:html|js|cjs|md|css|mmd|svg|json)$/.test(item.name))texts.push({full,file:path.relative(root,full),text:decoder.decode(fs.readFileSync(full))});
+  else if(/\.(?:html|js|mjs|cjs|md|css|mmd|svg|json)$/.test(item.name))texts.push({full,file:path.relative(root,full),text:decoder.decode(fs.readFileSync(full))});
  }
 }
 function publicLink(link,where){
@@ -72,6 +72,7 @@ check('独立 HTML 内嵌运行资源，查阅网上资料不影响离线动画'
  const html=fs.readFileSync(path.join(root,'Groq_TSP_交互讲解.html'),'utf8');
  assert.ok(!/<(?:script|img|iframe|audio|video|source)\b[^>]*\bsrc\s*=\s*["'](?!data:)/i.test(html),'独立网页不得加载外部运行资源');
  assert.ok(!/<link\b[^>]*\brel=["']stylesheet["']/i.test(html),'样式必须内嵌');
- for(const m of html.matchAll(/url\(\s*["']?([^\s)'";]+)/g))assert.ok(/^(?:#|data:)/.test(m[1]),'样式资源必须内嵌：'+m[1]);
+ const styles=[...html.matchAll(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi)].map(m=>m[1]).join('\n');
+ for(const m of styles.matchAll(/url\(\s*["']?([^\s)'";]+)/g))assert.ok(/^(?:#|data:)/.test(m[1]),'样式资源必须内嵌：'+m[1]);
 });
 console.log(`全部 ${checks} 组引用检查通过，覆盖 ${texts.length} 个文本文件。站点实时可用性需另行联网核对。`);
