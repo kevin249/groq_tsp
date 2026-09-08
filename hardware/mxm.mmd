@@ -1,0 +1,40 @@
+block-beta
+ columns 6
+ WSTORE["SRAM 中的权重块 · 4 行 × 4 列"]:6
+ BUFFER["权重缓冲 · 等待读取"]:6
+ CORNER["x / w"] WCOL0["输出 0"] WCOL1["输出 1"] WCOL2["输出 2"] WCOL3["输出 3"] ROWLABEL["部分和"]
+X0["x0 = 1"] M00["w = 0
+乘积 = 0"] M01["w = 0
+乘积 = 0"] M02["w = 0
+乘积 = 0"] M03["w = 0
+乘积 = 0"] ROW0["第 1 项"]
+X1["x1 = 2"] M10["w = 0
+乘积 = 0"] M11["w = 0
+乘积 = 0"] M12["w = 0
+乘积 = 0"] M13["w = 0
+乘积 = 0"] ROW1["第 2 项"]
+X2["x2 = 3"] M20["w = 0
+乘积 = 0"] M21["w = 0
+乘积 = 0"] M22["w = 0
+乘积 = 0"] M23["w = 0
+乘积 = 0"] ROW2["第 3 项"]
+X3["x3 = 4"] M30["w = 0
+乘积 = 0"] M31["w = 0
+乘积 = 0"] M32["w = 0
+乘积 = 0"] M33["w = 0
+乘积 = 0"] ROW3["第 4 项"]
+SUMHEAD["累加器"] SUM0["0"] SUM1["0"] SUM2["0"] SUM3["0"] SUMEND["y = xW"]
+class M00,M01,M02,M03,M10,M11,M12,M13,M20,M21,M22,M23,M30,M31,M32,M33 mxm
+class SUM0,SUM1,SUM2,SUM3 vxm
+class X0,X1,X2,X3 mem
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

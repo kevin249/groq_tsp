@@ -1,0 +1,8 @@
+# UTF-8 · 文本采用 LF，媒体与文档保留二进制内容。
+* text=auto eol=lf
+*.pdf binary
+*.pptx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary

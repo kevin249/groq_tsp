@@ -1,0 +1,50 @@
+block-beta
+ columns 8
+ TITLE["本层 KV · 每列代表一个上下文位置"]:8
+ WRITEBUF["K/V 写入缓冲 · 本层投影输出"]:8
+P0["位置 0"] P1["位置 1"] P2["位置 2"] P3["位置 3"] P4["位置 4"] P5["位置 5"] P6["位置 6"] P7["位置 7"]
+K0["K · 空"] K1["K · 空"] K2["K · 空"] K3["K · 空"] K4["K · 空"] K5["K · 空"] K6["K · 空"] K7["K · 空"]
+V0["V · 空"] V1["V · 空"] V2["V · 空"] V3["V · 空"] V4["V · 空"] V5["V · 空"] V6["V · 空"] V7["V · 空"]
+SCORE0["Q·K0
+等待"] SCORE1["Q·K1
+等待"] SCORE2["Q·K2
+等待"] SCORE3["Q·K3
+等待"] SCORE4["Q·K4
+等待"] SCORE5["Q·K5
+等待"] SCORE6["Q·K6
+等待"] SCORE7["Q·K7
+等待"]
+PROB0["权重 p0
+等待"] PROB1["权重 p1
+等待"] PROB2["权重 p2
+等待"] PROB3["权重 p3
+等待"] PROB4["权重 p4
+等待"] PROB5["权重 p5
+等待"] PROB6["权重 p6
+等待"] PROB7["权重 p7
+等待"]
+ QUERY["本轮 Q"]:2
+ FETCH["读取可见的 K / V"]:4
+ RESULT["注意力"]:2
+class TITLE mem
+
+ INPUT["本轮新输入
+等待"]:2 MIX["MXM + VXM · 执行模型各层"]:4 NEXT["下一个 Token
+等待"]:2
+ HOSTBUF["服务返回缓冲
+等待"]:4 USERBUF["用户已经收到
+等待"]:4
+class INPUT,HOSTBUF,USERBUF port
+class MIX mxm
+class NEXT vxm
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

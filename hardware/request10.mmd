@@ -1,0 +1,30 @@
+block-beta
+ columns 1
+R0["01  用户输入 / CPU 准备"]
+R1["02  PCIe / Embedding / 分发"]
+R2["03  Norm / QKV / RoPE / KV"]
+R3["04  读 KV / QK / Softmax / PV"]
+R4["05  Wo / 归约 / 残差"]
+R5["06  Norm / FFN / 归约 / 残差"]
+R6["07  逐层 / PP / Norm / 词表头"]
+R7["08  采样 / 返回 / 下一轮"]
+R0 --> R1
+R1 --> R2
+R2 --> R3
+R3 --> R4
+R4 --> R5
+R5 --> R6
+R6 --> R7
+class R0,R1,R7 host
+class R2,R3,R4,R5,R6 mem
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

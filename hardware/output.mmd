@@ -1,0 +1,29 @@
+block-beta
+ columns 4
+ WORDTABLE["输出词表 · 每格是一项候选"]:4
+T0["芯片
+等待分数"] T1["集成
+等待分数"] T2["它
+等待分数"] T3["其他
+等待分数"]
+ SELECT["Token 选择 · 逻辑阶段"]:4
+ TOKEN["ID 寄存器
+空"]:2
+ BYTES["增量解码缓冲
+空"]:2
+FIFOHEAD["返回通道 · 数据缓冲槽"]:4
+ F0["空"] F1["空"] F2["空"] F3["空"]
+class WORDTABLE mem
+class SELECT vxm
+class TOKEN,BYTES,F0,F1,F2,F3 port
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

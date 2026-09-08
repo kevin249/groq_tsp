@@ -1,0 +1,50 @@
+block-beta
+ columns 2
+block:CHIP0
+ columns 4
+ CHIP0HEAD["LPU 分片 1"]:4
+C0R0L0["SRAM"] C0R0L1["SRAM"] C0R0L2["MAC"] C0R0L3["MAC"]
+C0R1L0["SRAM"] C0R1L1["SRAM"] C0R1L2["MAC"] C0R1L3["MAC"]
+C0R2L0["SRAM"] C0R2L1["SRAM"] C0R2L2["MAC"] C0R2L3["MAC"]
+C0OUT["激活寄存器 · 等待"]:4
+end
+class CHIP0 mem
+block:CHIP1
+ columns 4
+ CHIP1HEAD["LPU 分片 2"]:4
+C1R0L0["SRAM"] C1R0L1["SRAM"] C1R0L2["MAC"] C1R0L3["MAC"]
+C1R1L0["SRAM"] C1R1L1["SRAM"] C1R1L2["MAC"] C1R1L3["MAC"]
+C1R2L0["SRAM"] C1R2L1["SRAM"] C1R2L2["MAC"] C1R2L3["MAC"]
+C1OUT["激活寄存器 · 等待"]:4
+end
+class CHIP1 mem
+block:CHIP2
+ columns 4
+ CHIP2HEAD["LPU 分片 3"]:4
+C2R0L0["SRAM"] C2R0L1["SRAM"] C2R0L2["MAC"] C2R0L3["MAC"]
+C2R1L0["SRAM"] C2R1L1["SRAM"] C2R1L2["MAC"] C2R1L3["MAC"]
+C2R2L0["SRAM"] C2R2L1["SRAM"] C2R2L2["MAC"] C2R2L3["MAC"]
+C2OUT["激活寄存器 · 等待"]:4
+end
+class CHIP2 mem
+block:CHIP3
+ columns 4
+ CHIP3HEAD["LPU 分片 4"]:4
+C3R0L0["SRAM"] C3R0L1["SRAM"] C3R0L2["MAC"] C3R0L3["MAC"]
+C3R1L0["SRAM"] C3R1L1["SRAM"] C3R1L2["MAC"] C3R1L3["MAC"]
+C3R2L0["SRAM"] C3R2L1["SRAM"] C3R2L2["MAC"] C3R2L3["MAC"]
+C3OUT["激活寄存器 · 等待"]:4
+end
+class CHIP3 mem
+C2C["C2C · 编译安排的片间传输"]:2
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

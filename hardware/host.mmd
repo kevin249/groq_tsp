@@ -1,0 +1,30 @@
+block-beta
+ columns 4
+ USERDEVICE["用户设备 · 输入 Prompt"]:4
+ NETBUF["网络缓冲
+请求消息"] HOSTCPU["主机 CPU
+分词与运行时"]:2 HOSTRAM["主机内存
+输入张量"]
+ ID0["ID · 101"] ID1["ID · 602"] ID2["ID · 9"] ID3["ID · 3"]
+ PROGRAM["已部署程序
+指令与数据布局"]:2 MODELWEIGHTS["已部署模型权重
+来自训练"]:2
+ PCIE["设备输入接口 · 数字任务"]:4
+ DEVMEM["片上 SRAM
+权重与激活"]:2 DEVMXM["MXM / VXM
+数值运算"]:2
+class USERDEVICE,NETBUF,PCIE port
+class HOSTRAM,MODELWEIGHTS,DEVMEM,ID0,ID1,ID2,ID3 mem
+class PROGRAM icu
+class DEVMXM mxm
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

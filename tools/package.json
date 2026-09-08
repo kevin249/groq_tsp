@@ -1,0 +1,16 @@
+{
+  "name": "groq-tsp-training-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Groq TSP 中文教学网页的离线图表生成与校验工具",
+  "scripts": {
+    "build": "node hardware-sources.cjs && node build-hardware.cjs && node pack.cjs",
+    "pack": "node pack.cjs",
+    "check": "node check-performance.cjs && node check-cluster.cjs && node check-operators.cjs && node check-playback.cjs && node check-workspace.cjs && node check-cycle.cjs && node check-request.cjs && node check-references.cjs",
+    "check:references": "node check-references.cjs"
+  },
+  "devDependencies": {
+    "mermaid": "11.17.2",
+    "playwright": "1.63.0"
+  }
+}

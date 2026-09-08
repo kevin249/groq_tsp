@@ -1,0 +1,31 @@
+block-beta
+ columns 2
+ XREG["输入寄存器
+x = 1"] WREG["权重寄存器
+w = 2"]
+ MULT["乘法器
+等待"]:2
+ ADD["加法器
+等待"] ACC["列累加寄存器
+旧值 = 0"]
+ OUT["本项执行后的部分和
+等待"]:2
+ XREG --> MULT
+ WREG --> MULT
+ MULT --> ADD
+ ACC --> ADD
+ ADD --> OUT
+class XREG,WREG mem
+class MULT,ADD mxm
+class ACC,OUT vxm
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

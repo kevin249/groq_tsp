@@ -1,0 +1,39 @@
+block-beta
+ columns 2
+ ADDRREG["地址寄存器
+bank = 0 · 行 02"] DECODER["地址译码器
+选中一条字线"]
+ block:BANK0
+ columns 5
+ BANK0HEAD["Bank 0 · SRAM 地址行"]:5
+ A00["00"] B0R0L0["1"] B0R0L1["2"] B0R0L2["3"] B0R0L3["4"]
+ A01["01"] B0R1L0["2"] B0R1L1["3"] B0R1L2["4"] B0R1L3["5"]
+ A02["02"] B0R2L0["3"] B0R2L1["4"] B0R2L2["5"] B0R2L3["6"]
+ A03["03"] B0R3L0["4"] B0R3L1["5"] B0R3L2["6"] B0R3L3["7"]
+end
+ block:BANK1
+ columns 5
+ BANK1HEAD["Bank 1 · SRAM 地址行"]:5
+ A10["00"] B1R0L0["2"] B1R0L1["3"] B1R0L2["4"] B1R0L3["5"]
+ A11["01"] B1R1L0["3"] B1R1L1["4"] B1R1L2["5"] B1R1L3["6"]
+ A12["02"] B1R2L0["4"] B1R2L1["5"] B1R2L2["6"] B1R2L3["7"]
+ A13["03"] B1R3L0["5"] B1R3L1["6"] B1R3L2["7"] B1R3L3["8"]
+end
+block:READOUT:2
+ columns 4
+ READHEAD["读出锁存器 · 同一地址行的 4 个示意 lane"]:4
+R0["等待"] R1["等待"] R2["等待"] R3["等待"]
+end
+class BANK0,BANK1 mem
+class READOUT port
+
+classDef mem fill:#dceef8,stroke:#7896ac,color:#203c50
+classDef mxm fill:#fff0d1,stroke:#7896ac,color:#203c50
+classDef vxm fill:#eee5fa,stroke:#7896ac,color:#203c50
+classDef sxm fill:#e0f2e9,stroke:#7896ac,color:#203c50
+classDef icu fill:#e5eafb,stroke:#7896ac,color:#203c50
+classDef port fill:#eaf0f6,stroke:#7896ac,color:#203c50
+classDef frame fill:#ffffff,stroke:#7896ac,color:#203c50
+classDef host fill:#f3f6fa,stroke:#7896ac,color:#203c50
+classDef stream fill:#e0f0f5,stroke:#7896ac,color:#203c50
+classDef wire fill:#dce7ef,stroke:#7896ac,color:#203c50

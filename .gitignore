@@ -1,0 +1,6 @@
+# UTF-8 · 本地依赖、缓存和临时预览不进入版本库。
+node_modules/
+/预览/
+/reports/
+.DS_Store
+Thumbs.db
