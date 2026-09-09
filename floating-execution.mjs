@@ -20,18 +20,18 @@ export class FloatingExecution {
   this.edges=Array.from({length:4},()=>{const mesh=new T.Mesh(new T.BoxGeometry(1,1,1),mat);this.frame.add(mesh);return mesh;});
   this.back=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshStandardMaterial({color:0xe7eef0,metalness:.25,roughness:.4,side:T.BackSide}));this.frame.add(this.back);this.frame.visible=false;
   this.css.domElement.addEventListener('wheel',event=>{event.preventDefault();event.stopPropagation();this.setZoom(this.zoom*Math.exp(-event.deltaY*.001));},{passive:false});
-  // CSS3DRenderer 的悬浮层会截断普通 click 的 bubble；把动作代理回主容器，继续复用原来的统一 action handler。
-  panel.el.addEventListener('click',event=>this.bridgeClick(event),true);
+  // CSS3D 悬浮层的普通 click 会在抵达主容器 bubble handler 前被截断；capture 层只桥接本面板动作。
+  host.addEventListener('click',event=>this.bridgeHostClick(event),true);
   panel.el.addEventListener('dblclick',event=>{if(event.target.closest('.se-drag-handle')&&!event.target.closest('button')){event.preventDefault();event.stopPropagation();this.resetLayout();}},true);
   panel.el.addEventListener('pointerdown',event=>this.beginDrag(event));
   window.addEventListener('pointermove',event=>this.moveDrag(event));
   window.addEventListener('pointerup',event=>this.endDrag(event));
   window.addEventListener('pointercancel',event=>this.endDrag(event));
  }
- bridgeClick(event){
-  const target=event.target instanceof Element?event.target:null;if(!target)return;
-  const reset=target.closest('[data-action="float-zoom-reset"]');if(reset){event.preventDefault();event.stopPropagation();this.resetLayout();return;}
+ bridgeHostClick(event){
+  const target=event.target instanceof Element?event.target:null;if(!target||!this.panel.el.contains(target))return;
   if(target.closest('[data-teach-mode]'))return; // 教学页签由 SemanticView 本地处理。
+  const reset=target.closest('[data-action="float-zoom-reset"]');if(reset){event.preventDefault();event.stopPropagation();this.resetLayout();return;}
   const action=target.closest('button[data-action]'),flow=target.closest('[data-flow-node]');if(!action&&!flow)return;
   event.preventDefault();event.stopPropagation();const proxy=document.createElement('button');proxy.hidden=true;
   if(action)proxy.dataset.action=action.dataset.action;if(flow)proxy.dataset.flowNode=flow.dataset.flowNode;
