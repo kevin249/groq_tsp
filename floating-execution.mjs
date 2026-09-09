@@ -33,9 +33,8 @@ export class FloatingExecution {
   if(target.closest('[data-teach-mode]'))return; // 教学页签由 SemanticView 本地处理。
   const reset=target.closest('[data-action="float-zoom-reset"]');if(reset){event.preventDefault();event.stopPropagation();this.resetLayout();return;}
   const action=target.closest('button[data-action]'),flow=target.closest('[data-flow-node]');if(!action&&!flow)return;
-  event.preventDefault();event.stopPropagation();const proxy=document.createElement('button');proxy.hidden=true;
-  if(action)proxy.dataset.action=action.dataset.action;if(flow)proxy.dataset.flowNode=flow.dataset.flowNode;
-  this.host.append(proxy);proxy.click();proxy.remove();
+  const proxy=document.createElement('button');proxy.hidden=true;if(action)proxy.dataset.action=action.dataset.action;if(flow)proxy.dataset.flowNode=flow.dataset.flowNode;
+  this.host.append(proxy);proxy.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));proxy.remove();event.preventDefault();event.stopPropagation();
  }
  persist(){safeWrite({zoom:this.zoom,x:this.offsetX,y:this.offsetY});}
  beginDrag(event){const handle=event.target.closest('.se-drag-handle');if(!handle||event.target.closest('button,select,input,a,[role="button"]'))return;event.preventDefault();event.stopPropagation();this.drag={id:event.pointerId,x:event.clientX,y:event.clientY,ox:this.offsetX,oy:this.offsetY};handle.classList.add('dragging');try{handle.setPointerCapture(event.pointerId);}catch{}}
