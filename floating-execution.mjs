@@ -6,6 +6,7 @@ const STORE='groq-tsp-floating-execution-v2';
 const DEFAULT_ZOOM=.5;
 const safeRead=()=>{try{return JSON.parse(localStorage.getItem(STORE)||'{}');}catch{return{};}};
 const safeWrite=value=>{try{localStorage.setItem(STORE,JSON.stringify(value));}catch{}}
+const FLOW_TARGETS={P0:['prompt','prefill'],P1:['tokenize','prefill'],P2:['embedding','prefill'],P3:['attnnorm','prefill'],P4:['finalnorm','prefill'],P5:['sample','prefill'],D0:['schedule','decode'],D1:['embedding','decode'],D2:['attnnorm','decode'],D3:['gpu-egress','decode'],D4:['gateup','decode'],D5:['gpu-return','decode'],D6:['ffnwrite','decode'],D7:['sample','decode']};
 
 export class FloatingExecution {
  constructor({scene,host,panel,onChange}){
@@ -20,22 +21,33 @@ export class FloatingExecution {
   this.edges=Array.from({length:4},()=>{const mesh=new T.Mesh(new T.BoxGeometry(1,1,1),mat);this.frame.add(mesh);return mesh;});
   this.back=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshStandardMaterial({color:0xe7eef0,metalness:.25,roughness:.4,side:T.BackSide}));this.frame.add(this.back);this.frame.visible=false;
   this.css.domElement.addEventListener('wheel',event=>{event.preventDefault();event.stopPropagation();this.setZoom(this.zoom*Math.exp(-event.deltaY*.001));},{passive:false});
-  // CSS3D 悬浮层的普通 click 会在抵达主容器 bubble handler 前被截断；capture 层只桥接本面板动作。
-  host.addEventListener('click',event=>this.bridgeHostClick(event),true);
+  // 悬浮 CSS3D 层不依赖主容器的 click bubble；教学动作只调用 SPATIAL_LAB_APP 已公开的导航 API。
+  panel.el.addEventListener('click',event=>this.handlePanelClick(event),true);
   panel.el.addEventListener('dblclick',event=>{if(event.target.closest('.se-drag-handle')&&!event.target.closest('button')){event.preventDefault();event.stopPropagation();this.resetLayout();}},true);
   panel.el.addEventListener('pointerdown',event=>this.beginDrag(event));
   window.addEventListener('pointermove',event=>this.moveDrag(event));
   window.addEventListener('pointerup',event=>this.endDrag(event));
   window.addEventListener('pointercancel',event=>this.endDrag(event));
  }
- bridgeHostClick(event){
-  const target=event.target instanceof Element?event.target:null;if(!target||!this.panel.el.contains(target))return;
-  if(target.closest('[data-teach-mode]'))return; // 教学页签由 SemanticView 本地处理。
-  const reset=target.closest('[data-action="float-zoom-reset"]');if(reset){event.preventDefault();event.stopPropagation();this.resetLayout();return;}
-  const action=target.closest('button[data-action]'),flow=target.closest('[data-flow-node]');if(!action&&!flow)return;
-  const proxy=document.createElement('button');proxy.hidden=true;if(action)proxy.dataset.action=action.dataset.action;if(flow)proxy.dataset.flowNode=flow.dataset.flowNode;
-  this.host.append(proxy);proxy.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));proxy.remove();event.preventDefault();event.stopPropagation();
+ handlePanelClick(event){
+  const target=event.target instanceof Element?event.target:null;if(!target||target.closest('[data-teach-mode]'))return;
+  const flow=target.closest('[data-flow-node]');if(flow){const spec=FLOW_TARGETS[flow.dataset.flowNode];if(spec){event.preventDefault();event.stopPropagation();this.navigate(...spec);}return;}
+  const b=target.closest('button[data-action]');if(!b)return;const a=b.dataset.action;
+  if(!['float-zoom-in','float-zoom-out','float-zoom-reset','micro-prev','micro-next','focus-token','focus-ffn','focus-attn','focus-transfer'].includes(a))return;
+  event.preventDefault();event.stopPropagation();
+  switch(a){
+   case'float-zoom-in':this.setZoom(this.zoom+.1);break;
+   case'float-zoom-out':this.setZoom(this.zoom-.1);break;
+   case'float-zoom-reset':this.resetLayout();break;
+   case'micro-prev':window.SPATIAL_LAB_APP?.microStep(-1);break;
+   case'micro-next':window.SPATIAL_LAB_APP?.microStep(1);break;
+   case'focus-token':this.navigate('tokenize','prefill');break;
+   case'focus-ffn':this.navigate('gateup','decode');break;
+   case'focus-attn':this.navigate('qk','decode',4);break;
+   case'focus-transfer':this.navigate('gpu-egress','decode');break;
+  }
  }
+ navigate(id,phase,layer){const app=window.SPATIAL_LAB_APP;if(!app)return;if(app.state.phase!==phase)app.setMode(phase);if(layer)app.setLayer(layer);const s=app.state;let i=s.trace.findIndex(x=>x.phase===phase&&x.id===id&&(!layer||x.layer===layer));if(i<0)i=s.trace.findIndex(x=>x.id===id);if(i>=0)app.seek(i);}
  persist(){safeWrite({zoom:this.zoom,x:this.offsetX,y:this.offsetY});}
  beginDrag(event){const handle=event.target.closest('.se-drag-handle');if(!handle||event.target.closest('button,select,input,a,[role="button"]'))return;event.preventDefault();event.stopPropagation();this.drag={id:event.pointerId,x:event.clientX,y:event.clientY,ox:this.offsetX,oy:this.offsetY};handle.classList.add('dragging');try{handle.setPointerCapture(event.pointerId);}catch{}}
  moveDrag(event){if(!this.drag||event.pointerId!==this.drag.id)return;event.preventDefault();this.offsetX=this.drag.ox+event.clientX-this.drag.x;this.offsetY=this.drag.oy+event.clientY-this.drag.y;this.clampOffset();this.applyPlacement();this.onChange?.();}
