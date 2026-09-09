@@ -2,6 +2,8 @@ name: Temp build teaching UI
 on:
   push:
     branches: [chatgpt/teaching-window-v2]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
