@@ -67,7 +67,7 @@ if(typeof window!=='undefined'&&typeof requestAnimationFrame==='function'){
   if(data){
    let from=null,to=null;
    if(p.type==='transfer'&&p.meta?.route?.length>1){const hop=Math.min(p.meta.route.length-2,e.hop||0),prev=p.events[Math.max(0,idx-1)],x=a[p.meta.route[hop]],y=a[p.meta.route[hop+1]];if(x&&y){const q0=prev?.hop===hop&&prev?.total?clamp((prev.received||0)/prev.total):0,q1=e.total?clamp((e.received||0)/e.total):q0;from=x.clone().lerp(y,q0);to=x.clone().lerp(y,q1);if(e.stalled&&q0===q1){const wobble=.08*Math.sin(phase*Math.PI);from.add({x:0,y:wobble,z:0});to.copy(from);}}}
-   }else{const prev=p.events[Math.max(0,idx-1)],u0=unitOf(prev,a)||'MEM',u1=unitOf(e,a)||u0;from=a[u0]?.clone();to=a[u1]?.clone();if(from&&to&&u0===u1){const r=.13,s=phase*Math.PI*2;to.add({x:Math.cos(s)*r,y:0,z:Math.sin(s)*r});}}
+   else{const prev=p.events[Math.max(0,idx-1)],u0=unitOf(prev,a)||'MEM',u1=unitOf(e,a)||u0;from=a[u0]?.clone();to=a[u1]?.clone();if(from&&to&&u0===u1){const r=.13,s=phase*Math.PI*2;to.add({x:Math.cos(s)*r,y:0,z:Math.sin(s)*r});}}
    if(from&&to)data.position.copy(from.lerp(to,phase)).add({x:0,y:.58,z:0});
   }
   if(instruction&&a.ICU){const target=unitOf(e,a);if(target&&a[target]){instruction.visible=state.follow;instruction.position.copy(a.ICU.clone().lerp(a[target],phase)).add({x:0,y:.72,z:0});instruction.rotation.y=phase*Math.PI*2;instruction.rotation.x=phase*Math.PI;}else instruction.visible=false;}
