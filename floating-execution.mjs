@@ -24,7 +24,6 @@ export class FloatingExecution {
   this.css.domElement.addEventListener('wheel',event=>{event.preventDefault();event.stopPropagation();this.setZoom(this.zoom*Math.exp(-event.deltaY*.001));},{passive:false});
   // SemanticView 会重建 innerHTML，因此直接给每一轮新生成的控件绑定目标元素事件。
   this.observer=new MutationObserver(()=>this.bindControls());this.observer.observe(panel.el,{childList:true,subtree:true});this.bindControls();
-  panel.el.addEventListener('dblclick',event=>{const target=event.target;const handle=target?.closest?.('.se-drag-handle');if(handle&&!target?.closest?.('button')){event.preventDefault();event.stopPropagation();this.resetLayout();}});
   panel.el.addEventListener('pointerdown',event=>this.beginDrag(event));
   window.addEventListener('pointermove',event=>this.moveDrag(event));
   window.addEventListener('pointerup',event=>this.endDrag(event));
@@ -33,6 +32,7 @@ export class FloatingExecution {
  bindControls(){
   for(const b of this.panel.el.querySelectorAll('button[data-action]')){const a=b.dataset.action;if(!ACTIONS.has(a)||b.dataset.floatBound==='1')continue;b.dataset.floatBound='1';b.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();this.runAction(a);});}
   for(const node of this.panel.el.querySelectorAll('[data-flow-node]')){if(node.dataset.floatBound==='1')continue;node.dataset.floatBound='1';const run=event=>{const spec=FLOW_TARGETS[node.dataset.flowNode];if(!spec)return;event.preventDefault();event.stopPropagation();this.navigate(...spec);};node.addEventListener('click',run);node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')run(event);});}
+  for(const handle of this.panel.el.querySelectorAll('.se-drag-handle')){if(handle.dataset.floatDblBound==='1')continue;handle.dataset.floatDblBound='1';handle.addEventListener('dblclick',event=>{if(event.target?.closest?.('button'))return;event.preventDefault();event.stopPropagation();this.resetLayout();});}
  }
  runAction(a){switch(a){case'float-zoom-in':this.setZoom(this.zoom+.1);break;case'float-zoom-out':this.setZoom(this.zoom-.1);break;case'float-zoom-reset':this.resetLayout();break;case'micro-prev':window.SPATIAL_LAB_APP?.microStep(-1);break;case'micro-next':window.SPATIAL_LAB_APP?.microStep(1);break;case'focus-token':this.navigate('tokenize','prefill');break;case'focus-ffn':this.navigate('gateup','decode');break;case'focus-attn':this.navigate('qk','decode',4);break;case'focus-transfer':this.navigate('gpu-egress','decode');break;}}
  navigate(id,phase,layer){const app=window.SPATIAL_LAB_APP;if(!app)return;if(app.state.phase!==phase)app.setMode(phase);if(layer)app.setLayer(layer);const s=app.state;let i=s.trace.findIndex(x=>x.phase===phase&&x.id===id&&(!layer||x.layer===layer));if(i<0)i=s.trace.findIndex(x=>x.id===id);if(i>=0)app.seek(i);}
