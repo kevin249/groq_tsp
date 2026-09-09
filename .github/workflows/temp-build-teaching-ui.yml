@@ -10,7 +10,7 @@ permissions:
 jobs:
   build:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +22,9 @@ jobs:
           cache-dependency-path: tools/package-lock.json
       - run: npm --prefix tools ci
       - run: npm --prefix tools run pack
+      - run: npm --prefix tools run check:semantic
       - name: Commit generated bundle
+        shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
