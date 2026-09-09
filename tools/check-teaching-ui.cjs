@@ -1,4 +1,4 @@
-/* UTF-8 · 教学悬浮窗口：默认半尺寸、拖动、复位与三种教学视图。 */
+/* UTF-8 · 教学悬浮窗口：默认半尺寸、拖动、复位与四种教学视图。 */
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{pathToFileURL}=require('node:url'),{chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.SPATIAL_BROWSER||'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});try{
@@ -7,8 +7,9 @@ const root=path.resolve(__dirname,'..');
  const snap=()=>p.evaluate(()=>{const a=SPATIAL_LAB_APP,b=a.panels.execution.el.getBoundingClientRect(),f=a.floatingExecution;return{zoom:f.zoom,offsetX:f.offsetX,offsetY:f.offsetY,x:b.x,y:b.y,w:b.width,h:b.height,step:a.state.step,mode:a.panels.execution.el.dataset.teachMode};});
  let a=await snap();check('首次打开悬浮执行窗口默认 50%',Math.abs(a.zoom-.5)<1e-6&&a.w<600);
  await p.locator('[data-action=focus-ffn]').click();const before=await snap(),h=p.locator('.se-drag-handle');const box=await h.boundingBox();await p.mouse.move(box.x+80,box.y+10);await p.mouse.down();await p.mouse.move(box.x+190,box.y+70,{steps:8});await p.mouse.up();await p.waitForTimeout(100);const moved=await snap();check('标题栏拖动只改变窗口位置，不改变当前算子和缩放',Math.abs(moved.offsetX-before.offsetX)>50&&Math.abs(moved.offsetY-before.offsetY)>20&&moved.step===before.step&&moved.zoom===before.zoom);
- await p.locator('[data-action=float-zoom-in]').click();await p.waitForTimeout(100);const scaled=await snap();console.log('缩放位置诊断',JSON.stringify({moved,scaled}));check('拖动位置在窗口缩放后保留',scaled.zoom>moved.zoom&&Math.abs(scaled.offsetX-moved.offsetX)<1&&Math.abs(scaled.offsetY-moved.offsetY)<1);
- for(const mode of ['sequence','detail','compare']){await p.locator('[data-teach-mode='+mode+']').click();const s=await snap();check('教学视图 '+mode+' 可切换且不改变当前算子',s.mode===mode&&s.step===before.step);}
+ await p.locator('[data-action=float-zoom-in]').click();await p.waitForTimeout(100);const scaled=await snap();check('拖动位置在窗口缩放后保留',scaled.zoom>moved.zoom&&Math.abs(scaled.offsetX-moved.offsetX)<1&&Math.abs(scaled.offsetY-moved.offsetY)<1);
+ for(const mode of ['sequence','detail','compare','instruction']){await p.locator('[data-teach-mode='+mode+']').click();const s=await snap();check('教学视图 '+mode+' 可切换且不改变当前算子',s.mode===mode&&s.step===before.step);}
+ check('TSP 指令页展示公开 MXM 指令并明确不是 Groq 3 实机 trace',await p.evaluate(()=>{const t=document.querySelector('.se-instruction-pane')?.textContent||'';return ['LW','IW','ABC','ACC'].every(x=>t.includes(x))&&t.includes('非 Groq 3 实机 trace');}));
  await p.locator('[data-action=float-zoom-reset]').click();await p.waitForTimeout(80);const reset=await snap();check('50%按钮恢复默认大小和默认位置',Math.abs(reset.zoom-.5)<1e-6&&Math.abs(reset.offsetX)<1&&Math.abs(reset.offsetY)<1);
  const rb=await h.boundingBox();await p.mouse.move(rb.x+80,rb.y+10);await p.mouse.down();await p.mouse.move(rb.x+150,rb.y+45,{steps:5});await p.mouse.up();await p.waitForTimeout(50);const movedAgain=await snap();check('复位后仍可再次拖动',Math.abs(movedAgain.offsetX)>20||Math.abs(movedAgain.offsetY)>15);
  const rb2=await h.boundingBox();await p.mouse.dblclick(rb2.x+70,rb2.y+10);await p.waitForTimeout(80);const dbl=await snap();check('双击标题栏同样恢复默认位置',Math.abs(dbl.zoom-.5)<1e-6&&Math.abs(dbl.offsetX)<1&&Math.abs(dbl.offsetY)<1);
