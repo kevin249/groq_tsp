@@ -20,12 +20,22 @@ export class FloatingExecution {
   this.edges=Array.from({length:4},()=>{const mesh=new T.Mesh(new T.BoxGeometry(1,1,1),mat);this.frame.add(mesh);return mesh;});
   this.back=new T.Mesh(new T.PlaneGeometry(1,1),new T.MeshStandardMaterial({color:0xe7eef0,metalness:.25,roughness:.4,side:T.BackSide}));this.frame.add(this.back);this.frame.visible=false;
   this.css.domElement.addEventListener('wheel',event=>{event.preventDefault();event.stopPropagation();this.setZoom(this.zoom*Math.exp(-event.deltaY*.001));},{passive:false});
-  panel.el.addEventListener('click',event=>{const b=event.target.closest('[data-action="float-zoom-reset"]');if(!b)return;event.preventDefault();event.stopPropagation();this.resetLayout();},true);
+  // CSS3DRenderer 的悬浮层会截断普通 click 的 bubble；把动作代理回主容器，继续复用原来的统一 action handler。
+  panel.el.addEventListener('click',event=>this.bridgeClick(event),true);
   panel.el.addEventListener('dblclick',event=>{if(event.target.closest('.se-drag-handle')&&!event.target.closest('button')){event.preventDefault();event.stopPropagation();this.resetLayout();}},true);
   panel.el.addEventListener('pointerdown',event=>this.beginDrag(event));
   window.addEventListener('pointermove',event=>this.moveDrag(event));
   window.addEventListener('pointerup',event=>this.endDrag(event));
   window.addEventListener('pointercancel',event=>this.endDrag(event));
+ }
+ bridgeClick(event){
+  const target=event.target instanceof Element?event.target:null;if(!target)return;
+  const reset=target.closest('[data-action="float-zoom-reset"]');if(reset){event.preventDefault();event.stopPropagation();this.resetLayout();return;}
+  if(target.closest('[data-teach-mode]'))return; // 教学页签由 SemanticView 本地处理。
+  const action=target.closest('button[data-action]'),flow=target.closest('[data-flow-node]');if(!action&&!flow)return;
+  event.preventDefault();event.stopPropagation();const proxy=document.createElement('button');proxy.hidden=true;
+  if(action)proxy.dataset.action=action.dataset.action;if(flow)proxy.dataset.flowNode=flow.dataset.flowNode;
+  this.host.append(proxy);proxy.click();proxy.remove();
  }
  persist(){safeWrite({zoom:this.zoom,x:this.offsetX,y:this.offsetY});}
  beginDrag(event){const handle=event.target.closest('.se-drag-handle');if(!handle||event.target.closest('button,select,input,a,[role="button"]'))return;event.preventDefault();event.stopPropagation();this.drag={id:event.pointerId,x:event.clientX,y:event.clientY,ox:this.offsetX,oy:this.offsetY};handle.classList.add('dragging');try{handle.setPointerCapture(event.pointerId);}catch{}}
