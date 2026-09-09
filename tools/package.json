@@ -14,7 +14,7 @@
     "check:spatial": "node check-spatial.cjs",
     "check:groq3": "node check-lpx-model.cjs && node check-groq3.cjs",
     "build:evidence": "node build-evidence.cjs",
-    "check:semantic": "node check-semantic.cjs && node check-contract-browser.cjs",
+    "check:semantic": "node check-semantic.cjs && node check-contract-browser.cjs && node check-teaching-ui.cjs",
     "build:flow": "node build-data-flow.cjs"
   },
   "devDependencies": {
