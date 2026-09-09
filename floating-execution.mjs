@@ -35,7 +35,14 @@ export class FloatingExecution {
   for(const handle of this.panel.el.querySelectorAll('.se-drag-handle')){if(handle.dataset.floatDblBound==='1')continue;handle.dataset.floatDblBound='1';handle.addEventListener('dblclick',event=>{if(event.target?.closest?.('button'))return;event.preventDefault();event.stopPropagation();this.resetLayout();});}
  }
  runAction(a){switch(a){case'float-zoom-in':this.setZoom(this.zoom+.1);break;case'float-zoom-out':this.setZoom(this.zoom-.1);break;case'float-zoom-reset':this.resetLayout();break;case'micro-prev':window.SPATIAL_LAB_APP?.microStep(-1);break;case'micro-next':window.SPATIAL_LAB_APP?.microStep(1);break;case'focus-token':this.navigate('tokenize','prefill');break;case'focus-ffn':this.navigate('gateup','decode');break;case'focus-attn':this.navigate('qk','decode',4);break;case'focus-transfer':this.navigate('gpu-egress','decode');break;}}
- navigate(id,phase,layer){const app=window.SPATIAL_LAB_APP;if(!app)return;if(app.state.phase!==phase)app.setMode(phase);if(layer)app.setLayer(layer);const s=app.state;let i=s.trace.findIndex(x=>x.phase===phase&&x.id===id&&(!layer||x.layer===layer));if(i<0)i=s.trace.findIndex(x=>x.id===id);if(i>=0)app.seek(i);}
+ navigate(id,phase,layer){
+  const app=window.SPATIAL_LAB_APP;if(!app)return;
+  const locate=()=>{const s=app.state;let i=s.trace.findIndex(x=>x.phase===phase&&x.id===id&&(!layer||x.layer===layer));if(i<0)i=s.trace.findIndex(x=>x.id===id&&(!layer||x.layer===layer));if(i<0)i=s.trace.findIndex(x=>x.id===id);return i;};
+  let i=locate();
+  // 完整请求 trace 已同时包含 Prefill/Decode 时只 seek，不改变 routeMode；仅目标确实不存在时切换到单阶段视图。
+  if(i<0){app.setMode(phase);i=locate();}
+  if(i>=0)app.seek(i);
+ }
  persist(){safeWrite({zoom:this.zoom,x:this.offsetX,y:this.offsetY});}
  beginDrag(event){const target=event.target,handle=target?.closest?.('.se-drag-handle');if(!handle||target?.closest?.('button,select,input,a,[role="button"]'))return;event.preventDefault();event.stopPropagation();this.drag={id:event.pointerId,x:event.clientX,y:event.clientY,ox:this.offsetX,oy:this.offsetY};handle.classList.add('dragging');try{handle.setPointerCapture(event.pointerId);}catch{}}
  moveDrag(event){if(!this.drag||event.pointerId!==this.drag.id)return;event.preventDefault();this.offsetX=this.drag.ox+event.clientX-this.drag.x;this.offsetY=this.drag.oy+event.clientY-this.drag.y;this.clampOffset();this.applyPlacement();this.onChange?.();}
