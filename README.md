@@ -1,10 +1,23 @@
 # Groq LPX 三维可视化解析
 
-以“谁是世界上最厉害的大模型？”为入口，观察真实 Token、模型网络、GPU / LPX 分工，以及机架、服务器、芯片中的数据与控制操作。
+以“谁是世界上最厉害的大模型？”为入口，观察官方 Token、参考网络、GPU / LPX 分工推演，以及机架、服务器、芯片中的数据与控制操作。
 
-直接打开 [Groq_TSP_交互讲解.html](Groq_TSP_交互讲解.html)。默认是参考 Blender 分区方式的亮色工作台：顶部工作区、左侧执行树、中央三维视口、右侧属性与性能、底部时间轴。Three.js 渲染实体部件，菜单仍是同一场景中的 CSS3DObject，通过相机朝向补偿保持可读。运行所需的脚本、材质生成代码、几何、样式、Token 快照和 Mermaid 网络图均已内嵌。
+直接打开 [Groq_TSP_交互讲解.html](Groq_TSP_交互讲解.html)。默认是参考 Blender 分区方式的亮色工作台：顶部工作区、左侧执行树、中央三维视口、右侧属性与性能、底部时间轴。Three.js 渲染实体部件，菜单仍是同一场景中的 CSS3DObject，由固定 UI 相机投影保持可读。运行所需的脚本、材质生成代码、几何、样式、Token 快照和 Mermaid 网络图均已内嵌。
 
-默认“完整请求”只接收一次 Prompt，经过 GPU Prefill 后进入 GPU → Groq LPX FFN / MoE → GPU → 用户的 Decode 路径。传输是有限的一次飞行，到达后驻留；结束后停止，需要明确重置才会重新输入。“下一 Token”保留上下文，直接进入 Decode，不重复原句的接收、分词与 Prefill。单独选择 Prefill 时，查看的是全部在 GPU 执行的前缀处理。
+默认“完整请求”只接收一次 Prompt，先运行 Prefill 的全部模型层并回放首个 Token，再进入 Decode；Decode 的每层都独立经过 GPU → Groq LPX → GPU，全部层结束才回放下一个 Token。左侧与时间轴可选择任意层，不再把后续层折叠为一个操作。传输按描述符、分段接收、背压保持与完整负载提交展开；结束后停止，需要明确重置才会重新输入。“下一 Token”保留上下文，直接进入 Decode，不重复原句的接收、分词与 Prefill。单独选择 Prefill 时，查看的是全部在 GPU 执行的前缀处理。
+
+计算窗口悬浮在完整三维视口中，上半部分常驻 Prefill / Decode 数据 flow，下半部分展开当前算子。中央硬件旋转时窗口保持朝向和位置；窗口上的加减按钮、百分比复位和滚轮可单独缩放，左右菜单与底部操作栏保持原布局。
+
+## 如何观察一次计算
+
+中央上方可直接选择“逐个分词”“FFN 乘加”“Attention”“传输握手”。“下一事件”只执行一个有明确读写效果的事件；底部“下一算子”跳过当前展开；方向键左右也可单步。播放、拖动、暂停与回退共用同一份状态。
+
+- 分词从空序列开始，定位原文和 UTF-8 范围后才追加一个 ID；之后组装 18 个模板位置。
+- FFN 以 4 → 3 → 4 的数值算例展开。先读 x 和 W，再更新 ACC，最后写输出列；Gate、Up、SiLU 和 Down 的数据前后相接。
+- Attention 的 QKV、QK Norm / RoPE、KV 追加、QK、Softmax 和 PV 使用同一组缩小数据。DeltaNet 另有独立状态更新算例。
+- 传输用 8 B BF16 负载、每段 4 B，显示 valid / ready、接收缓冲和下游消费条件。它是逻辑接口算例，不表示实际 Ethernet 封包或交换机实现。
+
+硬件上的数据标记保持固定，指向存储与执行资源；右侧同时显示当前算例进度和完整模型规模。数值表用四位有效数字便于阅读，悬停可查看完整值；算式保留六位有效数字，事件内使用 JavaScript 数值计算，未模拟芯片精度和舍入。具体设计见 [语义动画设计](docs/语义动画设计.md)。
 
 ## Prompt 与真实分词
 
@@ -27,21 +40,21 @@
 | --- | --- |
 | 左侧悬浮菜单 | 模型、Prefill / Decode、任意模型层、完整分组流程、同时显示的指令与数据 |
 | 中央实体 | 外部服务 / GPU、32 槽 LPX 机架、单托盘 8 LPU、片间互联、芯片内部 14 个公开区域 |
-| 右侧悬浮菜单 | 当前算子、张量形状、矩阵 FLOPs、权重 / 激活字节、资源下界、专家和精度选择 |
+| 右侧悬浮菜单 | 当前算子、张量形状、矩阵 FLOPs、参考张量 / 权重占用、证据来源、未知的线上字节与实机延迟；可显式选择假设分片 |
 | 底部悬浮菜单 | 真实字片与 ID、播放 / 暂停、前后操作、速度、给定续写的下一位置 |
 
 拖动旋转、滚轮缩放，点击硬件检查部件，双击槽位或 LPU 深入。“展开”连续抽出托盘或移开服务器上盖、冷板。“跟随”让镜头跟随所选算子的执行位置。底部时间轴可选择算子、拖动当前动作进度；“动作回放”的秒数是视觉时间，不是芯片 latency。网络总览使用 Mermaid，机械实体采用金属、PCB、鳍片、连接器和小元件网格。
 
-Rubin GPU 根据 [NVIDIA 官方结构](https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/)及[封装对照图](https://developer-blogs.nvidia.com/wp-content/uploads/2026/03/LPX05-Rubin_GPU_and_Groq_3_LPU.webp)重建为双计算裸片、八组 HBM4，替代通用板卡外形。权重 / KV / 状态映射到 HBM 与存储层级，矩阵乘映射到 SM 内 Tensor Core，向量与 Softmax 映射到相应执行资源。图中位置表示资源归属，具体 SM、HBM 栈和存储地址分配未公开，不伪造实机调度。
+Rubin GPU 根据 [NVIDIA 官方结构](https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/)及[封装对照图](https://developer-blogs.nvidia.com/wp-content/uploads/2026/03/LPX05-Rubin_GPU_and_Groq_3_LPU.webp)重建为双计算裸片、八组 HBM4，替代通用板卡外形。权重 / KV / 状态映射到 HBM 与存储层级，矩阵、向量与 Softmax 映射到执行资源类别；具体内核、Tensor Core 或 SFU 指令未公开。图中位置表示资源归属，具体 SM、HBM 栈和存储地址分配未公开，不伪造实机调度。
 
 ## 两模型的独立网络
 
 - Qwen3.8-27B：64 层、D=5120；48 层 DeltaNet、16 层 Gated Attention；24Q / 4KV、Dense SwiGLU 中间维 17408、普通残差与最终 RMSNorm。
 - Qwen3.8-Flash-Next：48 层、D=2560；四路门控残差，第 2 层 PLE n-gram 注入；36 层 DeltaNet、12 层 QSA；512 个路由专家选 10 个，加独立共享专家，最后为门控残差混合。
 
-依据 NVIDIA 的 AFD 方案，Prefill 在 GPU 完成所有层；Decode 的 Attention、缓存与残差留在 GPU，FFN / MoE 的隐藏激活送入 LPX，再返回 GPU。进入 LPX 的是向量，不是原始文本。网络的具体分支见 [27B Mermaid 源图](hardware/network27.mmd) 与 [Flash-Next Mermaid 源图](hardware/networkflash.mmd)。
+NVIDIA 公开 AFD 中的 GPU Prefill / Decode Attention 与 LPX FFN / MoE 分工。本文据此构建 Qwen 推演，残差、Norm、Router、输出头的具体部署位置并未公开，不能由模型配置推导。进入 LPX 的是向量，不是原始文本。网络的具体分支见 [27B Mermaid 源图](hardware/network27.mmd) 与 [Flash-Next Mermaid 源图](hardware/networkflash.mmd)。
 
-模型与部署是两个层次：27B 的 TP2、Flash-Next 的 EP8 / EP16 是解释数据去向的示例分配；专家编号不是本句推理得到的实际 Top-10。物理外形参照公开图，未公开的制造尺寸、板内实际布线与 GPU 内部分区不视为已知。LPX 的单条指令周期未公开，界面不将动画帧或播放秒数冒充硬件 cycle。
+默认显示“芯片放置未公开”，不指定真实 owner、不用 FP8 峰值推算耗时。模型与部署是两个层次：27B 的 TP2、Flash-Next 的 EP8 / EP16 是解释数据去向的示例分配；专家编号不是本句推理得到的实际 Top-10。物理外形参照公开图，未公开的制造尺寸、板内实际布线与 GPU 内部分区不视为已知。LPX 的单条指令周期未公开，界面不将动画帧或播放秒数冒充硬件 cycle。所有模型资料固定 revision；27B 配置 swish 与参考实现 sigmoid 的差异直接显示。完整审计见 [事实核对与修正](docs/事实核对与修正.md)。
 
 ## 源码与构建
 
@@ -49,8 +62,10 @@ Rubin GPU 根据 [NVIDIA 官方结构](https://developer.nvidia.com/blog/inside-
 | --- | --- |
 | index.html / Groq_TSP_交互讲解.html | 开发入口 / 可独立分发的网页 |
 | spatial-lab-source.mjs / spatial-hardware.mjs / rubin-hardware.mjs | 场景、相机、空间菜单、数据层 / 机架与服务器 / Rubin 封装 |
+| floating-execution.mjs / data-flow-diagrams.mjs | 悬浮窗口的透视与缩放 / Mermaid 完整数据流程 |
+| semantic-execution.js / semantic-view.mjs | 可回退的计算与传输事件 / 状态表格和固定硬件标记 |
 | spatial-lab.js / spatial-lab.css | 内嵌 Three.js 的浏览器包 / 空间界面样式 |
-| token-samples.js / network-model.js | 官方分词及模板快照 / 两模型的操作、形状与成本 |
+| model-evidence.js / token-samples.js / network-model.js | 固定版本事实 / 官方分词及模板 / 参考算法、完整层序列与数据口径 |
 | lpx-model.js / hardware/ | LPX 规格与示例分配 / Mermaid 源图和 SVG |
 | [解析方案](docs/解析方案.md)、[设计说明](docs/设计说明.md)、[验证说明](docs/验证说明.md) | 方案、口径和验证范围 |
 
@@ -63,7 +78,9 @@ Rubin GPU 根据 [NVIDIA 官方结构](https://developer.nvidia.com/blog/inside-
 | 安装锁定的开发依赖 | npm.cmd --prefix tools ci |
 | 更新独立 HTML（含三维包） | npm.cmd --prefix tools run pack |
 | 重新生成 Mermaid 与三维包 | npm.cmd --prefix tools run build |
-| 从官方网址更新分词快照 | npm.cmd --prefix tools run build:tokens |
+| 重新核对并固定来源版本 | node tools/build-evidence.cjs |
+| 按固定 revision 更新分词快照 | npm.cmd --prefix tools run build:tokens |
+| 语义计算与实际交互检查 | npm.cmd --prefix tools run check:semantic |
 | 核心与引用检查 | npm.cmd --prefix tools run check |
 | 网络 / Token 与真实 WebGL 浏览器检查 | npm.cmd --prefix tools run check:immersive |
 

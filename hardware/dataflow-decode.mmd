@@ -1,0 +1,2 @@
+flowchart LR
+    D0["本轮 Token ID"] --> D1["Embedding"] --> D2["Attention / DeltaNet<br/>读写 KV / 状态"] --> D3["激活送 LPX"] --> D4["FFN / MoE"] --> D5["回 GPU / 残差"] --> D6["逐层重复"] --> D7["词表 → Token / 用户"]

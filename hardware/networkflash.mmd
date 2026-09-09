@@ -10,10 +10,10 @@ flowchart TB
   DELTA --> WRITE["Attention 输出 · 门控写回四路残差"]
   QSA --> WRITE
   WRITE --> MREAD["MoE 独立门控读出 → 2560"]
-  MREAD --> ROUTER["512 个路由分数 → Softmax → Top-10"]
+  MREAD --> ROUTER["512 个路由分数 → FP32 Softmax → Top-10 → 重归一化"]
   MREAD --> SHARED["共享专家 SwiGLU · 640<br/>独立 sigmoid 门控"]
   ROUTER --> EXPERTS["10 个命中专家 · 各 2560 → 640 → 2560"]
-  EXPERTS --> SUM["Σ 路由权重 × 专家输出 + 共享输出"]
+  EXPERTS --> SUM["Σ 归一化 α × 专家输出 + 共享输出"]
   SHARED --> SUM
   SUM --> MWRITE["MoE 输出 · 门控写回四路残差"]
   MWRITE --> LOOP{"已完成 48 层？"}

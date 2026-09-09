@@ -29,6 +29,7 @@ export function buildRubin(parent,{box,instances,geometry,material,text,setPick}
  const caps=[];for(let i=0;i<64;i++)caps.push([-3.12+i*.098,.08,-3.18],[-3.12+i*.098,.08,3.18]);for(let i=0;i<39;i++)caps.push([-3.46,.08,-2.55+i*.136],[3.46,.08,-2.55+i*.136]);instances(g,geometry(.043,.047,.057),'silver',caps);
  text(g,'NVIDIA RUBIN',0,.035,3.70,.19,'#3a4735',true);
  const pins=[];for(let x=0;x<26;x++)for(let z=0;z<24;z++)pins.push([-4+x*.32,-.43,-3.61+z*.313]);instances(g,new T.SphereGeometry(.047,6,4),'silver',pins);
- const io=new T.Vector3(3.73,.32,0),compute=new T.Vector3(-1.5,.37,0),memory=anchor.HBM0.clone(),cache=anchor.HBM7.clone();
+ // 张量落点使用封装上方的资源类别，不指定 HBM0/HBM7 或某一裸片。
+ const io=new T.Vector3(3.73,.6,0),compute=new T.Vector3(0,.95,0),memory=new T.Vector3(0,.95,-2.17),cache=new T.Vector3(0,.95,2.17);
  return{group:g,actuators:[],dies,memories,spec:RUBIN_SPEC,sources:RUBIN_SOURCES,anchors:{...anchor,GPU:compute,EMBED:memory,MATRIX:compute,VECTOR:compute.clone(),CACHE:cache,QKV:compute.clone(),RESIDUAL:cache.clone(),INDEX:compute.clone(),NETWORK:io,MEM:memory,MXM:compute.clone(),VXM:compute.clone(),ROOT:compute.clone(),PEER:anchor.DIE1.clone(),SM:compute.clone()}};
 }

@@ -5,6 +5,9 @@ body:not([data-workspace="spatial"]) #spatial-lab {display:none!important}
 #spatial-lab {position:fixed;inset:0;overflow:hidden;color:#203c3d;font:13px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;isolation:isolate}
 #spatial-lab canvas.sl-render {position:absolute;inset:0;display:block;touch-action:none;outline:none}
 #spatial-lab .sl-css {position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#spatial-lab .sl-world-css{position:absolute;pointer-events:none;overflow:hidden}
+#spatial-lab .sl-css{z-index:3}
+#spatial-lab .sl-world-css{z-index:2}
 .sl-panel {box-sizing:border-box;pointer-events:auto;background:rgba(250,253,251,.92);border:1px solid rgba(255,255,255,.95);border-radius:17px;box-shadow:0 12px 38px #183b3a16,0 1px 3px #183b3a20;padding:18px;color:#203c3d;font:13px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;overflow:hidden;backface-visibility:hidden}
 .sl-panel * {box-sizing:border-box}
 .sl-panel button,.sl-panel select {font:inherit;color:inherit;min-height:30px;border:1px solid #d6e1db;background:#f5f8f6;border-radius:7px;padding:5px 9px;cursor:pointer;box-shadow:none}
@@ -135,9 +138,10 @@ body:not([data-workspace="spatial"]) #spatial-lab {display:none!important}
 #spatial-lab .sl-toolbar button[aria-pressed=true] {background:#9cb8ca;color:#173c56}
 #spatial-lab .sl-caption {background:#ccd0d3bd;text-align:left;pointer-events:none;color:#697680;padding:4px 10px;font-size:10px}
 #spatial-lab .sl-bottom {background:#d4d8db;border-top:1px solid #a3acb3;padding:8px 13px;gap:5px}
+#spatial-lab .sl-bottom{gap:3px}
 #spatial-lab .sl-prompt {font-size:11px;color:#52616b}
 #spatial-lab .sl-prompt button {background:#e1e5e8;border-radius:3px;font-size:10px;min-height:23px;padding:3px 6px}
-#spatial-lab .sl-tokenlist {min-height:43px;gap:22px;justify-content:flex-start;padding-left:5px}
+#spatial-lab .sl-tokenlist {min-height:38px;gap:22px;justify-content:flex-start;padding-left:5px}
 #spatial-lab .sl-panel .sl-tokenlist button {font-size:17px;padding:0 2px;color:#3d7189}
 #spatial-lab .sl-panel .sl-tokenlist button[aria-pressed=true] {color:#915421;border-bottom-color:#cb8741;background:transparent}
 #spatial-lab .sl-panel .sl-tokenlist small {font-size:10px;color:#8a949a}
@@ -156,3 +160,63 @@ body:not([data-workspace="spatial"]) #spatial-lab {display:none!important}
 #spatial-lab .sl-scrubbar {display:flex;align-items:center;gap:8px;height:14px;min-height:14px;font-size:9px;color:#78858d}
 #spatial-lab .sl-scrubbar input {flex:1;height:8px;min-height:0;margin:0;accent-color:#b57943;cursor:ew-resize}
 #spatial-lab .sl-scrubbar span {font:10px Consolas,monospace;min-width:42px;text-align:right}
+
+/* 依据与推演边界在主界面直接可见。 */
+#spatial-lab .sl-boundary{font-size:10px;color:#71572e;background:#eae2d3;border-left:2px solid #ad8549;padding:5px 7px;line-height:1.6}
+#spatial-lab .sl-timeline button{min-width:0;overflow:hidden}
+#spatial-lab .sl-layer{min-height:26px}
+
+/* 具名状态与计算事件固定显示在硬件上方。 */
+#spatial-lab .sl-execution{background:#f7f8faef;border:1px solid #b2bec6;border-radius:5px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;box-shadow:0 3px 14px #273d4a17;overflow:hidden}
+#spatial-lab .sl-world-css .sl-execution{background:linear-gradient(135deg,#f6fbfbea,#e7f1f1e6);border:1px solid #eefcfc;border-radius:7px;box-shadow:0 12px 28px #213f5538,inset 0 0 0 1px #acc4ca;backface-visibility:hidden}
+#spatial-lab .se-flow-pane{flex:none;min-height:137px;border-bottom:1px solid #a9c3cd;padding-bottom:7px}
+#spatial-lab .se-flow-heading{display:flex;align-items:center;gap:10px;height:26px;font-size:11px;color:#345c6e}
+#spatial-lab .se-flow-heading>.se-quick{margin-right:auto}
+#spatial-lab .se-window-zoom{display:flex;align-items:center;gap:3px;font-size:10px;color:#69838d}
+#spatial-lab .se-window-zoom button{min-height:21px;padding:1px 5px;font-size:10px}
+#spatial-lab .se-flow-row{display:flex;align-items:center;height:46px;gap:8px}
+#spatial-lab .se-flow-row>b{font:10px Consolas,monospace;color:#64818e;min-width:42px}
+#spatial-lab .se-flow-row svg{display:block;width:100%;max-width:none!important;height:100%;overflow:visible}
+#spatial-lab .se-flow-row g.node{cursor:pointer}
+#spatial-lab .se-flow-row .flow-active rect{fill:#f0ddc4!important;stroke:#b9793a!important;stroke-width:2px!important}
+#spatial-lab .se-flow-row .flow-complete rect{fill:#e4ede7!important;stroke:#9fbca9!important}
+#spatial-lab .se-flow-row g.node:focus rect{stroke:#477d9b!important;stroke-width:2px!important}
+#spatial-lab .se-flow-caption{font-size:9px;color:#718793;display:flex;justify-content:space-between;gap:10px;margin-top:2px}
+#spatial-lab .se-operator-pane{display:flex;flex-direction:column;flex:1;min-height:0;gap:5px;padding-top:2px}
+#spatial-lab .se-quick{display:flex;gap:5px;align-items:center;min-height:23px;font-size:10px;color:#7a8993}
+#spatial-lab .se-quick button{min-height:22px;padding:2px 7px;background:#e8edf0;border-color:#c4cdd3}
+#spatial-lab .se-header{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:36px}
+#spatial-lab .se-header h3{font-size:14px;color:#294657;margin:0;line-height:1.4}
+#spatial-lab .se-kicker{font:9px/1.3 "Segoe UI","Microsoft YaHei",sans-serif;letter-spacing:.5px;color:#6c8290}
+#spatial-lab .se-valid{border:1px solid #c2cbd0;padding:3px 7px;border-radius:3px;font-size:10px;white-space:nowrap;color:#667983;background:#edf0f2}
+#spatial-lab .se-valid.ready{background:#e0eee6;color:#306b4e;border-color:#99b9a7}
+#spatial-lab .se-valid.stall{background:#f3e7cc;color:#8b652c;border-color:#cbb27b}
+#spatial-lab .se-equation{font:12px/1.5 Consolas,"Microsoft YaHei",monospace;background:#e8eef3;color:#26465b;padding:5px 8px;border-left:3px solid #688da6;white-space:normal}
+#spatial-lab .se-equation code{font:inherit;color:#665587;margin-right:18px}
+#spatial-lab .se-equation span{color:#26465b}
+#spatial-lab #sl-event-metrics{background:#e0e9ec;color:#335568;border-color:#7292a2}
+#spatial-lab .se-tables{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));align-items:start;gap:9px;flex:1;min-height:65px;overflow:auto}
+#spatial-lab .se-object{min-width:0;margin:0;background:transparent}
+#spatial-lab .se-object h4{font-size:10px;line-height:1.3;color:#4d6575;font-weight:600;margin:0 0 5px}
+#spatial-lab .se-object table{width:100%;border-collapse:collapse;table-layout:fixed;font:11px/1.45 Consolas,"Microsoft YaHei",monospace;margin:0;background:#fff;color:#3c5260}
+#spatial-lab .se-object td{border:1px solid #c5d1d8;text-align:center;padding:4px 2px;overflow-wrap:anywhere;transition:background-color .12s}
+#spatial-lab [data-semantic-type=matrix] .se-object td{white-space:nowrap}
+#spatial-lab [data-semantic-type=matrix] .se-tables{min-height:115px}
+#spatial-lab .se-object td.empty{color:#acb9c0;background:#eef1f4}
+#spatial-lab .se-object td.read{background:#d7eaf8;color:#1b587f;box-shadow:inset 0 0 0 1px #7aa8c6}
+#spatial-lab .se-object td.written{background:#d8edde;color:#24663c;box-shadow:inset 0 0 0 1px #79ab87}
+#spatial-lab .se-object td.held{background:#f2e7cd;color:#82662b}
+#spatial-lab .se-object small{display:block;font-size:9px;line-height:1.4;color:#8a99a2;margin-top:3px}
+#spatial-lab .se-readwrite{font:10px/1.35 Consolas,"Microsoft YaHei",monospace;display:flex;justify-content:space-between;gap:12px;color:#526b7b;min-height:16px}
+#spatial-lab .se-readwrite b{color:#355e77}
+#spatial-lab .se-footer{display:flex;align-items:center;gap:12px;border-top:1px solid #d5dde2;padding-top:5px}
+#spatial-lab .se-footer>div{display:flex;gap:5px;flex-shrink:0}
+#spatial-lab .se-footer small{font-size:9px;line-height:1.45;color:#7a8c98}
+#spatial-lab .se-prompt{display:flex;align-items:center;gap:0;font-size:19px;font-weight:600;letter-spacing:1px;min-height:29px}
+#spatial-lab .se-prompt span{padding:1px 2px;white-space:nowrap}
+#spatial-lab .se-prompt .pending{color:#a5b0b7}
+#spatial-lab .se-prompt .active{background:#daeaf2;color:#245e7b;border-bottom:2px solid #548cac}
+#spatial-lab .se-prompt .done{color:#557a66}
+#spatial-lab [data-semantic-type=dependency] .se-tables{grid-template-columns:3fr 1fr}
+#spatial-lab [data-semantic-type=dependency] .se-object td:first-child{width:20%}
+@media(max-width:1300px){#spatial-lab .sl-execution{padding:7px 9px;gap:4px}#spatial-lab .se-tables{gap:6px}#spatial-lab .se-object table{font-size:10px}#spatial-lab .se-header h3{font-size:12px}#spatial-lab .se-footer small{font-size:8px}#spatial-lab .se-quick button{font-size:10px}}

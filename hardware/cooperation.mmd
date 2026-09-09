@@ -1,0 +1,16 @@
+flowchart LR
+    USER["用户 / 请求"] --> SERVICE["接入服务 / Tokenizer"]
+    SERVICE --> GPU
+    DYNAMO["Dynamo：服务协调<br/>不驱动芯片逐周期执行"] -. "路由 / 后端协调" .-> GPU
+    DYNAMO -. "路由 / 后端协调" .-> LPX
+    subgraph GPU["Vera Rubin 侧"]
+        G["Rubin GPUs<br/>Prefill；Decode Attention"] <--> CX["CX-9"]
+    end
+    CX <-->|"中间激活；包格式未知"| ETH["Spectrum-X Ethernet"]
+    subgraph LPX["Groq 3 LPX 侧"]
+        FE["Fabric Expansion Logic"] <--> L["LPU 集群<br/>Decode FFN / MoE"]
+        L <-->|"C2C；实际并行分配未知"| PEER["其他 LPU / 托盘"]
+    end
+    ETH <--> FE
+    G --> OUTPUT["全部层完成 → 输出决策<br/>响应服务反分词 / 发送"]
+    OUTPUT --> USER
