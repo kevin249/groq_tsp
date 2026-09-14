@@ -26,7 +26,11 @@ function rack(group,{slot=0,rack=0,gpu=false}={},at=[0,0,0],scale=1){const g=new
  const face=new T.Mesh(front,material(gpu?'silver':'gold'));face.position.z=2.17;face.castShadow=true;dg.add(face);setPick(face,gpu?'GPU':'SLOT',{slot:i});
  const h=new T.Mesh(handle,material('black'));h.position.set(-.68,-.051,2.216);dg.add(h);box(dg,.045,.19,.14,-1.58,0,2.22,'silver',.015);box(dg,.045,.19,.14,1.58,0,2.22,'silver',.015);
  for(let p=0;p<6;p++)portPoints.push([.45+p*.15,y+.025,2.228]);
- const led=box(dg,.045,.018,.015,1.39,.04,2.24,i===slot?'blue':'green');text(dg,String(i).padStart(2,'0'),-.02,.018,2.221,.08,'#414b45');drawers.push(dg);if(i===slot){const edge=box(dg,3.08,.012,.016,0,-.105,2.244,'blue');edge.userData.selection=true;actuators.push({node:dg,base:dg.position.clone(),delta:new T.Vector3(0,0,3.8)});}}
+  const led=box(dg,.045,.018,.015,1.39,.04,2.24,i===slot?'blue':'green');text(dg,String(i).padStart(2,'0'),-.02,.018,2.221,.08,'#414b45');drawers.push(dg);if(i===slot){
+   const edge=box(dg,3.08,.012,.016,0,-.105,2.244,'blue');edge.userData.selection=true;
+   box(dg,2.75,.025,3.05,0,.145,-.14,'pcb',.025);for(let chip=0;chip<8;chip++){const cx=-.9+(chip%4)*.6,cz=-.78+Math.floor(chip/4)*1.28;box(dg,.43,.075,.55,cx,.205,cz,'gold',.025);box(dg,.29,.025,.37,cx,.258,cz,'die',.012);}box(dg,.56,.08,.72,1.08,.205,1.02,'ceramic',.02);text(dg,'8 × GROQ 3 LPU',0,.285,-.1,.105,'#d8eadf',true);text(dg,'SELECTED COMPUTE TRAY',0,.055,2.252,.072,'#355a61');
+   actuators.push({node:dg,base:dg.position.clone(),delta:new T.Vector3(0,0,4.6)});
+  }}
  instances(g,ports,'black',portPoints);
  box(g,3.28,.74,3.8,0,5.08,0,'gold',.11);const grate=[];for(let i=0;i<36;i++)for(let j=0;j<3;j++)grate.push([-1.45+i*.083,4.88+j*.16,1.926]);instances(g,geometry(.045,.11,.02),'black',grate);
  for(const y of [4.45,-4.65,-5.18])for(let i=0;i<5;i++){box(g,.47,.38,3.7,-1.2+i*.6,y,-.1,'ceramic',.035);box(g,.15,.11,.17,-1.2+i*.6,y,1.85,'steel',.025);}
@@ -64,12 +68,14 @@ export function buildHardware(level,state){const group=new T.Group();group.name=
  else if(level==='tray'||level==='fabric')result=tray(group,state,level==='fabric');
  else if(level==='chip')result=die(group,state);
  else if(level==='gpu')result=buildRubin(group,{box,instances,geometry,material,text,setPick});
- else{const lp=rack(group,state,[3.5,0,-1],.79);rack(group,{gpu:true},[-1.2,0,-2.2],.79);const laptop=new T.Group();laptop.position.set(-5.5,-4.1,3);group.add(laptop);box(laptop,3,.12,2,0,0,0,'steel',.08);const screen=box(laptop,3,1.85,.09,0,.97,-.83,'dark',.07);box(laptop,2.78,1.58,.015,0,1.02,-.774,'black');text(laptop,'谁是世界上最厉害的大模型？',0,1.02,-.761,.115,'#e6f1ee');const key=[];for(let i=0;i<12;i++)for(let j=0;j<4;j++)key.push([-1.27+i*.23,.08,-.47+j*.22]);instances(laptop,geometry(.18,.035,.15),'ceramic',key);setPick(screen,'USER');box(group,2.3,.6,1.45,-1.8,-4.3,3.1,'dark',.07);text(group,'SERVICE / TOKENIZER',-1.8,-4.26,3.84,.11,'#d2dfd9');pipe(group,[[-5.4,-4.12,2],[-4,-4.4,1.2],[-2,-4.4,2.4]],'dark',.035);
+ else{const lp=rack(group,state,[3.5,0,-1],.79);rack(group,{gpu:true},[-1.2,0,-2.2],.79);const laptop=new T.Group();laptop.position.set(-5.5,-4.1,3);group.add(laptop);box(laptop,3,.12,2,0,0,0,'steel',.08);const screen=box(laptop,3,1.85,.09,0,.97,-.83,'dark',.07);box(laptop,2.78,1.58,.015,0,1.02,-.774,'black');text(laptop,'谁是世界上最厉害的大模型？',0,1.02,-.761,.115,'#e6f1ee');const key=[];for(let i=0;i<12;i++)for(let j=0;j<4;j++)key.push([-1.27+i*.23,.08,-.47+j*.22]);instances(laptop,geometry(.18,.035,.15),'ceramic',key);setPick(screen,'USER');
+  const hostNode=new T.Group();hostNode.position.set(-1.8,-4.3,3.1);group.add(hostNode);setPick(box(hostNode,2.45,.58,1.55,0,0,0,'dark',.07),'HOST');box(hostNode,2.15,.035,1.28,0,.31,0,'pcb',.025);heatSink(hostNode,-.52,.54,0,.72,.72);for(let i=0;i<6;i++)box(hostNode,.07,.36,.72,.15+i*.18,.49,.12,'pcb',.015);for(let i=0;i<8;i++)box(hostNode,.12,.07,.08,-.96+i*.27,.03,.79,'black',.015);text(hostNode,'HOST SERVER',0,-.03,.786,.105,'#d2dfd9');text(hostNode,'CPU / RAM',.15,.72,.08,.095,'#e4eee9',true);
+  pipe(group,[[-5.4,-4.12,2],[-4,-4.4,1.2],[-2.05,-4.28,2.4],[-1.8,-4.1,3.1]],'dark',.035);
  const net={GPU:new T.Vector3(-1.2,-.2,-.4),CX9:new T.Vector3(-1.55,-3.65,.0),NETWORK:new T.Vector3(.65,-4.12,2.1),SLOT:new T.Vector3(3.5,-.2,.8)};
  const cx=box(group,1.14,.25,.85,net.CX9.x,net.CX9.y,net.CX9.z,'pcb',.025);setPick(cx,'CX9');box(group,.42,.1,.42,-1.55,-3.47,0,'gold',.015);text(group,'GPU SIDE / CX-9',-1.55,-3.17,0,.14,'#4a5b55');
  const sw=box(group,2.7,.38,1.14,net.NETWORK.x,net.NETWORK.y,net.NETWORK.z,'dark',.04);setPick(sw,'SPECTRUM_X');for(let p=0;p<12;p++)box(group,.14,.09,.04,-.47+p*.2,-4.1,2.68,'black');text(group,'SPECTRUM-X ETHERNET',.65,-3.73,2.1,.15,'#4a5b55');
  for(const[a,b]of [['GPU','CX9'],['CX9','NETWORK'],['NETWORK','SLOT']]){const x=net[a],y=net[b];pipe(group,[x.toArray(),[x.x,x.y-.2,(x.z+y.z)/2],[y.x,y.y-.2,(x.z+y.z)/2],y.toArray()],'blue',.022);}
- result={...lp,anchors:{USER:new T.Vector3(-5.5,-2.9,2.3),HOST:new T.Vector3(-1.8,-3.8,3.1),...net}};}
+  result={...lp,anchors:{USER:new T.Vector3(-5.5,-2.9,2.3),HOST:new T.Vector3(-1.8,-3.55,3.1),...net}};}
  return{...result,group,level,setExplosion(value){for(const a of result.actuators||[])a.node.position.copy(a.base).addScaledVector(a.delta,value);},anchors:result.anchors,picks(){const out=[];group.traverse(n=>{if(n.userData.pick)out.push(n);});return out;}};
 }
 export {material,pipe,text};
