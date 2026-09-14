@@ -220,3 +220,97 @@ body:not([data-workspace="spatial"]) #spatial-lab {display:none!important}
 #spatial-lab [data-semantic-type=dependency] .se-tables{grid-template-columns:3fr 1fr}
 #spatial-lab [data-semantic-type=dependency] .se-object td:first-child{width:20%}
 @media(max-width:1300px){#spatial-lab .sl-execution{padding:7px 9px;gap:4px}#spatial-lab .se-tables{gap:6px}#spatial-lab .se-object table{font-size:10px}#spatial-lab .se-header h3{font-size:12px}#spatial-lab .se-footer small{font-size:8px}#spatial-lab .se-quick button{font-size:10px}}
+
+
+/* 执行归属：同一次推理中明确区分 Host、GPU、LPU 与互联。 */
+#spatial-lab .sl-owner-badge{padding:6px 8px;border:1px solid #b7c4ca;border-left:4px solid #6e8794;background:#edf2f4;color:#355568;font-size:11px;font-weight:700;line-height:1.3}
+#spatial-lab .sl-owner-badge[data-owner=gpu]{border-left-color:#467fb0;background:#e8f1f8;color:#2c5f87}
+#spatial-lab .sl-owner-badge[data-owner=lpu]{border-left-color:#c27a32;background:#f7ecdd;color:#89531e}
+#spatial-lab .sl-owner-badge[data-owner=transport]{border-left-color:#6d8e74;background:#e7f0e8;color:#41654a}
+#spatial-lab .sl-owner-badge[data-owner=host]{border-left-color:#806da5;background:#eeeaf6;color:#5b4a7b}
+#spatial-lab .sl-owner-chip{display:inline-block;margin-left:5px;padding:1px 4px;border-radius:2px;font-size:8px;font-weight:700;line-height:1.2}
+#spatial-lab .sl-owner-chip.owner-gpu{background:#d5e6f1;color:#2c5f87}
+#spatial-lab .sl-owner-chip.owner-lpu{background:#ead3b1;color:#89531e}
+#spatial-lab .sl-owner-chip.owner-transport{background:#d1e2d4;color:#41654a}
+#spatial-lab .sl-owner-chip.owner-host{background:#ddd5eb;color:#5b4a7b}
+#spatial-lab .sl-timeline button.owner-gpu{background:#bcd6e8}
+#spatial-lab .sl-timeline button.owner-lpu{background:#e2c18d}
+#spatial-lab .sl-timeline button.owner-transport{background:#b8d0bb}
+#spatial-lab .sl-timeline button.owner-host{background:#cbbfe0}
+#spatial-lab .se-owner-legend{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:8px;line-height:1.2;margin:-1px 0 2px;color:#48606d}
+#spatial-lab .se-owner-legend span,#spatial-lab .se-owner-current{padding:2px 5px;border:1px solid #c4d0d5;border-radius:3px}
+#spatial-lab .se-owner-legend .owner-gpu,#spatial-lab .se-owner-current.owner-gpu{background:#e8f1f8;color:#2c5f87;border-color:#9fbcd2}
+#spatial-lab .se-owner-legend .owner-lpu,#spatial-lab .se-owner-current.owner-lpu{background:#f7ecdd;color:#89531e;border-color:#d7b17c}
+#spatial-lab .se-owner-legend .owner-transport,#spatial-lab .se-owner-current.owner-transport{background:#e7f0e8;color:#41654a;border-color:#a9c4ae}
+#spatial-lab .se-owner-legend .owner-host{background:#eeeaf6;color:#5b4a7b;border-color:#c0b4d5}
+#spatial-lab .se-owner-current.owner-host{background:#eeeaf6;color:#5b4a7b;border-color:#c0b4d5}
+#spatial-lab .se-flow-row .owner-gpu rect{fill:#e8f1f8!important;stroke:#6b9ac0!important}
+#spatial-lab .se-flow-row .owner-lpu rect{fill:#f7ecdd!important;stroke:#c27a32!important}
+#spatial-lab .se-flow-row .owner-transport rect{fill:#e7f0e8!important;stroke:#6d8e74!important}
+#spatial-lab .se-flow-row .owner-host rect{fill:#eeeaf6!important;stroke:#806da5!important}
+
+
+
+/* 三段式分享布局：顶部流程、中央舞台、底部当前讲解。 */
+#spatial-lab .sl-compat-panel{display:none!important;pointer-events:none!important;width:0!important;height:0!important}
+#spatial-lab .sl-title{display:block!important;padding:9px 22px 7px;background:#eef2f3;border-bottom:1px solid #b6c3c8;color:#263e4a;border-radius:0}
+#spatial-lab .sl-title-line{display:flex;align-items:center;gap:14px;height:28px}
+#spatial-lab .sl-title-line h1{font-size:16px;font-weight:650;letter-spacing:.1px;color:#203d4b;margin:0;white-space:nowrap}
+#spatial-lab .sl-title-line>#sl-stage-count{margin-left:auto;color:#526d79;font:12px Consolas,"Microsoft YaHei",sans-serif;white-space:nowrap}
+#spatial-lab .sl-settings-button{width:28px;min-height:25px;padding:0!important;border:0!important;background:transparent!important;color:#526d79!important;font-size:22px!important;line-height:20px}
+#spatial-lab .sl-settings-button:hover{background:#dce6e9!important}
+#spatial-lab .sl-stage-flow{display:flex;align-items:center;gap:7px;height:28px;white-space:nowrap;overflow:hidden;color:#809099}
+#spatial-lab .sl-stage-flow i{font-style:normal;color:#a3afb4;font-size:11px}
+#spatial-lab .sl-stage-flow button{min-height:22px;padding:2px 7px;border:0;border-radius:3px;background:transparent;color:#8b989e;font:10px/1.2 "Segoe UI","Microsoft YaHei",sans-serif}
+#spatial-lab .sl-stage-flow button span{margin-right:3px;font-size:10px}
+#spatial-lab .sl-stage-flow button.sl-stage-done{color:#526d79}
+#spatial-lab .sl-stage-flow button.sl-stage-current{background:#d9823c;color:#fff;box-shadow:0 1px 3px #7d4b2d40}
+#spatial-lab .sl-stage-flow button.sl-stage-future{color:#a4adb1}
+#spatial-lab .sl-settings{position:absolute;z-index:12;right:20px;top:43px;display:flex;align-items:center;gap:6px;padding:8px 10px;background:#f8fafb;border:1px solid #aebdc3;box-shadow:0 8px 20px #29465324;color:#4e6570;font-size:10px}
+#spatial-lab .sl-settings[hidden]{display:none}
+#spatial-lab .sl-settings label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+#spatial-lab .sl-settings select,#spatial-lab .sl-settings button{min-height:23px;padding:2px 5px;font-size:10px;border-radius:2px}
+#spatial-lab .sl-settings-label{color:#84939a;margin-left:3px}
+#spatial-lab .sl-bottom{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;column-gap:28px;row-gap:5px;padding:12px 24px;background:#f0f3f4;border-top:1px solid #aebcc2;border-radius:0;color:#304b58}
+#spatial-lab .sl-current{min-width:0}
+#spatial-lab .sl-current .sl-eyebrow{margin:0 0 2px;color:#7a8c95;font-size:9px;letter-spacing:1.4px}
+#spatial-lab .sl-current strong{display:block;color:#264c60;font-size:16px;font-weight:650;line-height:1.35}
+#spatial-lab .sl-current p{margin:3px 0 0;color:#526b76;font-size:11px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#spatial-lab .sl-stage-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;white-space:nowrap}
+#spatial-lab .sl-stage-actions button{min-width:78px;min-height:30px;border:1px solid #adbec5;background:#f8fafb;color:#45616e;border-radius:3px;font-size:11px;padding:5px 11px}
+#spatial-lab .sl-stage-actions button[data-action=deep]{min-width:92px}
+#spatial-lab .sl-stage-actions button:hover{background:#e4ecef}
+#spatial-lab .sl-stage-actions .sl-primary{background:#d9823c;color:#fff;border-color:#c17032}
+#spatial-lab .sl-secondary-controls{grid-column:1 / -1;display:grid;grid-template-columns:1fr;gap:2px;min-width:0;opacity:.84}
+#spatial-lab .sl-secondary-controls .sl-prompt{font-size:9px;color:#71838d;display:flex;justify-content:space-between;align-items:center}
+#spatial-lab .sl-secondary-controls .sl-prompt button{min-height:20px;padding:1px 5px;font-size:9px;background:transparent;border:0;color:#70828b}
+#spatial-lab .sl-secondary-controls .sl-tokenlist{min-height:22px;justify-content:flex-start;gap:15px;overflow:hidden}
+#spatial-lab .sl-secondary-controls .sl-tokenlist button{font-size:13px;padding:0;color:#5d8994}
+#spatial-lab .sl-secondary-controls .sl-tokenlist small{font-size:8px}
+#spatial-lab .sl-secondary-controls .sl-timeline{height:13px;min-height:13px;padding-top:1px}
+#spatial-lab .sl-secondary-controls .sl-timeline button{height:10px;min-height:10px}
+#spatial-lab .sl-secondary-controls .sl-progress{height:1px}
+#spatial-lab .sl-secondary-controls .sl-playback{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-top:2px;border-top:1px solid #d4dee2}
+#spatial-lab .sl-secondary-controls .sl-playback .sl-row{width:100%;justify-content:flex-end;gap:5px}
+#spatial-lab .sl-secondary-controls .sl-playback button{min-height:21px;padding:2px 6px;font-size:9px}
+#spatial-lab .sl-secondary-controls .sl-playback input{width:54px;min-height:12px}
+#spatial-lab .sl-secondary-controls .sl-scrubbar{max-width:350px;margin-left:auto;height:12px;min-height:12px;font-size:8px}
+#spatial-lab .sl-runtime{display:none!important}
+#spatial-lab .sl-execution{border:1px solid #8fa5ae;border-radius:5px;background:#f5f8f9f5;box-shadow:0 -8px 28px #263f4a26;padding:12px 16px}
+#spatial-lab .sl-world-css{z-index:4;pointer-events:auto}
+@media(max-width:900px){#spatial-lab .sl-title{padding-left:10px;padding-right:10px}#spatial-lab .sl-title-line h1{font-size:13px}#spatial-lab .sl-stage-flow{gap:2px}#spatial-lab .sl-stage-flow button{font-size:8px;padding:2px 3px}#spatial-lab .sl-stage-flow i{font-size:8px}#spatial-lab .sl-bottom{padding:9px 12px;column-gap:10px}#spatial-lab .sl-current strong{font-size:13px}#spatial-lab .sl-current p{font-size:10px}#spatial-lab .sl-stage-actions button{min-width:60px;padding:4px 6px;font-size:10px}}
+
+#spatial-lab .sl-inline-settings{display:flex;align-items:center;gap:4px;margin-left:4px}
+#spatial-lab .sl-inline-settings select{min-height:22px;max-width:150px;padding:2px 5px;border:1px solid #b8c6cb;border-radius:3px;background:#f8fafb;color:#526d79;font-size:9px}
+#spatial-lab .sl-inline-mode{display:inline-flex;align-items:center;border:1px solid #b8c6cb;border-radius:4px;overflow:hidden;background:#f8fafb}
+#spatial-lab .sl-inline-mode button{min-height:22px;border:0;border-right:1px solid #d5e0e5;background:transparent;color:#607985;padding:2px 7px;font:600 9px/1 var(--sl-font,Inter,system-ui);cursor:pointer}
+#spatial-lab .sl-inline-mode button:last-child{border-right:0}
+#spatial-lab .sl-inline-mode button[aria-pressed="true"]{background:#dcecf7;color:#173b5a;box-shadow:inset 0 -2px 0 #4d91bc}
+#spatial-lab .sl-hidden-controls{position:absolute;left:0;top:0;width:150px;height:24px;opacity:0;pointer-events:none;overflow:hidden}
+#spatial-lab .sl-hidden-controls select{width:145px;height:22px}
+#spatial-lab>.sl-bottom-fixed{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;width:100%!important;height:154px!important;min-height:154px!important;z-index:20!important;transform:none!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;overflow:visible!important}
+#spatial-lab>.sl-bottom-fixed .sl-current{position:absolute;left:24px;right:340px;top:12px;z-index:26}
+#spatial-lab>.sl-bottom-fixed .sl-stage-actions{position:absolute;right:24px;top:14px;z-index:30}
+#spatial-lab>.sl-bottom-fixed .sl-secondary-controls{position:absolute;left:24px;bottom:16px;width:calc(100% - 48px);height:82px;overflow:visible;transform:scale(.78);transform-origin:left bottom;z-index:25}
+@media(max-width:900px){#spatial-lab>.sl-bottom-fixed .sl-current{left:12px;right:250px;top:10px}#spatial-lab>.sl-bottom-fixed .sl-stage-actions{right:12px;top:12px}#spatial-lab>.sl-bottom-fixed .sl-secondary-controls{left:12px;width:calc(100% - 24px);transform:scale(.72)}}
+@media(max-width:900px){#spatial-lab .sl-inline-settings select{max-width:92px;font-size:8px}#spatial-lab .sl-inline-settings select+select{display:none}}

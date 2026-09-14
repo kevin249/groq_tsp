@@ -16,7 +16,7 @@ class Program{
  event(name,unit,instruction,equation,options={}){const prev=this.events.at(-1);this.events.push({index:this.events.length,name,unit,instruction,equation,objects:clone(this.objects),focus:[],view:Object.keys(this.objects),valid:false,read:[],write:[],...options});return this;}
 }
 const num=v=>typeof v==='number'?(Number.isInteger(v)?String(v):Number(v.toPrecision(6)).toString()):String(v??'未写入');
-function matrix(p,input,weights,out,unit='MXM',title='矩阵乘'){
+ function matrix(p,input,weights,out,unit='MXM',title='矩阵乘'){
  const x=p.objects[input].rows[0],w=p.objects[weights].rows,M=w[0].length;
  p.object(out,title+' 输出', [Array(M).fill(null)]).object('reg','操作数 / 累加器',[[null,null,null,0]],'a / b / product / acc');
  for(let j=0;j<M;j++){
@@ -28,20 +28,36 @@ function matrix(p,input,weights,out,unit='MXM',title='矩阵乘'){
    p.event('乘加 k='+k+'，累加器提交',unit,'acc ← acc + a × b',num(before)+' + '+num(x[k])+' × '+num(w[k][j])+' = '+num(after),{view:[input,weights,'reg',out],read:['a','b','acc'],write:['acc'],focus:[{id:'reg',r:0,c:0,role:'read'},{id:'reg',r:0,c:1,role:'read'},{id:'reg',r:0,c:2,role:'write'},{id:'reg',r:0,c:3,role:'write'}],arithmetic:{a:x[k],b:w[k][j],before,product,after}});
   }
   p.objects[out].rows[0][j]=p.objects.reg.rows[0][3];p.event('输出列 '+j+' 写回','MEM','y['+j+'] ← acc','只写入已累加完成的一列',{view:[input,weights,'reg',out],read:['acc'],write:[out+'[0,'+j+']'],focus:[{id:out,r:0,c:j,role:'write'}],valid:j===M-1});
+  }
  }
-}
-function tokenProgram(c){
- const p=new Program('tokenize','逐个揭示官方分词结果','字片 / ID 来自固定官方 Tokenizer；揭示顺序不模拟 BPE 合并实现。');
- p.object('tokens','结果序列',[Array(c.s.tokens.length).fill(null)]).object('ids','Token ID',[Array(c.s.tokens.length).fill(null)]);
- let pos=0,byte=0;p.meta.prompt=c.s.prompt;p.meta.tokens=c.s.tokens.map(t=>{const start=pos,byteStart=byte;pos+=t.text.length;byte+=new TextEncoder().encode(t.text).length;return{...t,start,end:pos,byteStart,byteEnd:byte};});
- p.event('原文保留，结果序列为空','CPU','results ← []','已得到 0 / '+c.s.tokens.length+' 个正文 Token',{revealed:0,activeToken:-1});
- p.meta.tokens.forEach((t,i)=>{
-  p.event('定位第 '+(i+1)+' 个字片「'+t.text+'」','CPU','定位已核对的字片范围','原文字符 ['+t.start+','+t.end+')；UTF-8 字节 ['+t.byteStart+','+t.byteEnd+')',{revealed:i,activeToken:i,read:['Prompt['+t.start+':'+t.end+']']});
-  p.objects.tokens.rows[0][i]=t.text;p.objects.ids.rows[0][i]=t.id;
-  p.event('追加 Token '+i+' = '+t.id,'CPU','results.append('+t.id+')','「'+t.text+'」 → '+t.id,{revealed:i+1,activeToken:i,write:['results['+i+']'],focus:[{id:'tokens',r:0,c:i,role:'write'},{id:'ids',r:0,c:i,role:'write'}],valid:i===c.s.tokens.length-1});
- });
- p.object('template','模板输入 ID · 按行排列',[c.s.contextIds.slice(0,9),c.s.contextIds.slice(9)],'包含角色、换行与生成前缀');
- p.event('正文分词完成，按模板组装输入','CPU','apply_chat_template(think=false)','6 个正文 Token + 模板位置 → '+c.s.contextIds.length+' 个输入 Token',{view:['template'],revealed:c.s.tokens.length,activeToken:-1,valid:true,write:['input_ids[0:'+c.s.contextIds.length+']']});return p;
+ function promptProgram(c){
+  const encoded=[...new TextEncoder().encode(c.s.prompt)],characters=[...c.s.prompt],total=encoded.length;
+  const p=new Program('ingress','Prompt 只传入一次：用户侧 → Host 接入缓冲','这里只演示可确认的数据边界：13 个 Unicode 字符编码为 39 B UTF-8 正文，并作为一次请求进入 Host。HTTP / RPC 封装、TLS 与线上协议未公开，因此不虚构包头和网络周期。');
+  p.meta={route:['USER','HOST'],prompt:c.s.prompt,total,characters:characters.length,payloadLabel:'Prompt · '+total+' B'};
+  p.object('source','用户侧原文',[[c.s.prompt,characters.length+' 字符',total+' B UTF-8']],'正文只提交一次')
+   .object('request','Host 接入缓冲',[[null,'0 / '+total+' B','未就绪']],'原文 / 已接收正文 / 下游可读');
+  p.event('用户侧形成一次请求正文','USER','body ← UTF8(prompt)',characters.length+' 个字符 → '+total+' B；此时数据仍在用户侧',{read:['Prompt 文本'],write:['UTF-8 正文'],routeStart:0,routeEnd:0,received:0,total,hardwareStatus:'正文已准备 · '+total+' B'});
+  p.event('一次性发送 Prompt 正文','NETWORK','send(body[0:'+total+'])','沿用户连接送往服务入口；正文不循环、不重复注入',{read:['UTF-8 正文'],write:['Host 接收端'],routeStart:0,routeEnd:1,received:0,total,hardwareStatus:'一次传输 · '+total+' B'});
+  p.objects.request.rows=[[c.s.prompt,total+' / '+total+' B','就绪']];
+  p.event('Host 收齐正文并开放请求缓冲','HOST','request.prompt ← body; prompt_ready ← 1','Host 完整接收 '+total+' B，下一步 tokenizer 才能读取原文',{read:['Host 接收端'],write:['request.prompt','prompt_ready'],routeStart:1,routeEnd:1,received:total,total,hardwareStatus:'正文已接收 · '+total+' / '+total+' B',focus:[{id:'request',r:0,c:0,role:'write'},{id:'request',r:0,c:1,role:'write'},{id:'request',r:0,c:2,role:'write'}],valid:true});
+  return p;
+ }
+ function tokenProgram(c){
+  const p=new Program('tokenize','逐个揭示官方分词结果','字片 / ID 来自固定官方 Tokenizer；揭示顺序不模拟 BPE 合并实现。');
+  const encoded=[...new TextEncoder().encode(c.s.prompt)];
+  p.meta.promptBytes=encoded.length;
+  p.object('source','Host 原文缓冲',[[c.s.prompt,[...c.s.prompt].length+' 字符',encoded.length+' B UTF-8']],'来自上一步，只读取，不再次接收 Prompt')
+   .object('tokens','正文 Token 字片',[Array(c.s.tokens.length).fill(null)])
+   .object('ids','正文 Token ID',[Array(c.s.tokens.length).fill(null)]);
+  let pos=0,byte=0;p.meta.prompt=c.s.prompt;p.meta.tokens=c.s.tokens.map(t=>{const start=pos,byteStart=byte;pos+=t.text.length;byte+=new TextEncoder().encode(t.text).length;return{...t,start,end:pos,byteStart,byteEnd:byte};});
+  p.event('Tokenizer 读取 Host 原文缓冲','CPU','source ← request.prompt; results ← []','输入仍是同一份 '+encoded.length+' B 原文；输出队列为 0 / '+c.s.tokens.length,{revealed:0,activeToken:-1,read:['request.prompt'],write:['results.length = 0'],hardwareStatus:'读取原文 · '+encoded.length+' B；输出 0 / '+c.s.tokens.length});
+  p.meta.tokens.forEach((t,i)=>{
+   p.event('读取第 '+(i+1)+' 个字片「'+t.text+'」','CPU','读取已核对的字片范围','原文字符 ['+t.start+','+t.end+')；UTF-8 字节 ['+t.byteStart+','+t.byteEnd+')',{revealed:i,activeToken:i,read:['Prompt['+t.start+':'+t.end+']'],hardwareStatus:'读取「'+t.text+'」· 字符 ['+t.start+','+t.end+')'});
+   p.objects.tokens.rows[0][i]=t.text;p.objects.ids.rows[0][i]=t.id;
+   p.event('写入正文 Token['+i+'] = '+t.id,'CPU','results.append('+t.id+')','「'+t.text+'」 → '+t.id+'；输出队列 '+(i+1)+' / '+c.s.tokens.length,{revealed:i+1,activeToken:i,write:['results['+i+']'],hardwareStatus:'写 Token['+i+'] = '+t.id+' · '+(i+1)+' / '+c.s.tokens.length,focus:[{id:'tokens',r:0,c:i,role:'write'},{id:'ids',r:0,c:i,role:'write'}],valid:i===c.s.tokens.length-1});
+  });
+  p.object('template','模板输入 ID · 按行排列',[c.s.contextIds.slice(0,9),c.s.contextIds.slice(9)],'包含角色、换行与生成前缀');
+  p.event('正文分词完成，按对话模板组装输入','CPU','apply_chat_template(think=false)','6 个正文 Token + 12 个角色 / 换行 / 生成前缀 Token → '+c.s.contextIds.length+' 个 input_ids',{view:['source','tokens','ids','template'],revealed:c.s.tokens.length,activeToken:-1,valid:true,write:['input_ids[0:'+c.s.contextIds.length+']'],hardwareStatus:'模板组装完成 · 6 + 12 = '+c.s.contextIds.length+' IDs'});return p;
 }
 function normProgram(title,input=raw){const p=new Program('norm',title,'缩小数值算例；显示求和依赖，不声称 VXM 采用此串行归约结构。');p.object('x','输入 x',[input]).object('sq','x²',[input.map(()=>null)]).object('stat','归约状态',[[0,null,null]],'sum / mean / inverse RMS').object('y','输出',[input.map(()=>null)]);let sum=0;
  input.forEach((v,i)=>{p.objects.sq.rows[0][i]=v*v;sum+=v*v;p.objects.stat.rows[0][0]=sum;p.event('平方并累积元素 '+i,'VXM','sum ← sum + x['+i+']²',num(v)+'²；sum = '+num(sum),{read:['x['+i+']'],write:['sum'],focus:[{id:'x',r:0,c:i,role:'read'},{id:'sq',r:0,c:i,role:'write'}]});});
@@ -70,9 +86,27 @@ function transferProgram(step,c){
  }
  return p;
 }
-function semanticProgram(step,c,state={}){
- const id=step.id,a=attention(),f=ffn();let p;
- if(id==='tokenize')return tokenProgram(c);
+function loopProgram(step){
+ const loop=step.loop||{},first=loop.firstLayer||'?',last=loop.lastLayer||'?',count=loop.count||0,pattern=loop.pattern||'同构算子链',rep=loop.representativeLayer||1;
+ const p=new Program('loop','循环：复用代表层的数据通路','后续层不重复播放逐元素事件；这里只显示 ICU / Scheduler 如何推进层号、提交状态并进入下一次迭代。');
+ p.meta={first,last,count,pattern,representativeLayer:rep};
+ p.object('control','循环控制',[['start','end','iter','state']], 'first / last / iteration / commit').object('pattern','代表层算子链',[[rep,pattern]]).object('state','层间状态',[['activation','KV / DeltaNet state','ready']]);
+ p.objects.control.rows=[[first,last,0,'待启动']];
+ p.event('读取循环边界','ICU / Scheduler','l ← '+first+'；end ← '+last,'将 '+count+' 个同构层压缩为一个可检查的循环描述',{read:['loop metadata'],write:['start','end']});
+ p.objects.control.rows=[[first,last,1,'代表层已展开']];
+ p.event('调用已讲解的代表层','Scheduler','run(L'+rep+')','只引用代表层的算子和数据依赖：'+pattern,{iter:1,read:['代表层算子链'],write:['iter'],focus:[{id:'pattern',r:0,c:1,role:'read'}]});
+ p.objects.control.rows=[[first,last,count,'状态待提交']];
+ p.event('提交层间状态并跳到下一层','ICU / SYNC','state ← commit(l); l ← l + 1', '激活、KV 或 DeltaNet 状态写回后，循环继续；没有再次绘制相同的算子',{iter:count,read:['activation','KV / DeltaNet state'],write:['state','iter']});
+ p.objects.control.rows=[[first,last,count,'已完成']];
+ p.objects.state.rows=[['activation','KV / DeltaNet state','ready']];
+ p.event('循环完成，交给后续结构分支','ICU / SYNC','assert(l > '+last+'); next ← downstream','已掠过 '+count+' 层；后续只在结构变化的代表层重新展开',{write:['state'],valid:true,focus:[{id:'control',r:0,c:3,role:'write'}]});
+ return p;
+}
+ function semanticProgram(step,c,state={}){
+  const id=step.id,a=attention(),f=ffn();let p;
+  if(id==='prompt')return promptProgram(c);
+  if(id==='tokenize')return tokenProgram(c);
+ if(id==='layer-loop')return loopProgram(step);
  if(['gpu-egress','gpu-return','afd','tray','return'].includes(id))return transferProgram(step,c);
  if(id==='gateup'||id==='qkv'||id==='deltaproj'||id==='qk'||id==='pv'||id==='down'||id==='deltaout'||id==='attngate'){
   p=new Program('matrix',step.title,'缩小数值算例；读 / 乘加 / 写回为依赖事件，不是 Groq 机器指令或真实 cycle。');

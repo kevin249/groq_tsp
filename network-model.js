@@ -9,8 +9,8 @@ const model=id=>root.LPX_MODEL.models[id];
 function shape(state){const m=model(state.model),s=root.TOKEN_SAMPLES[state.model],prefill=state.mode==='prefill',T=prefill?s.contextIds.length:1,S=prefill?T:s.contextIds.length+(state.outputIndex||0)+1;return{m,s,T,S,D:m.hidden,F:m.intermediate,Q:m.heads,K:m.kvHeads,d:m.headDim,flash:!!m.moe,full:state.layer%4===0,prefill,token:prefill?s.tokens[state.tokenIndex||0]:s.answerTokens[state.outputIndex||0]};}
 function trace(state){const c=shape(state),{m,s,T,S,D,F,Q,K,d,flash,full,prefill}=c,rows=[];
  const add=(id,group,title,hardware,unit,detail,formula,output,extra={})=>rows.push({id,group,title,hardware,unit:hardware==='GPU'?({MXM:'GPU 矩阵运算',VXM:'GPU 向量运算',MEM:'GPU 存储','MXM / VXM':'GPU 矩阵 / 向量'}[unit]||unit):unit,detail,formula,output,level:hardware==='GPU'?'gpu':hardware==='Host'?'external':'chip',from:'MEM',to:unit==='MXM'?'MXM':unit==='VXM'?'VXM':unit==='SXM'?'SXM':'MEM',kind:'vector',...extra});
- add('prompt','input','接收这句话','Host','CPU','原文使用 UTF-8 编码进入服务；彩色字片是真实正文 Token。','UTF-8(Prompt)',s.prompt,{level:'external',from:'USER',to:'HOST',kind:'text',bytes:new TextEncoder().encode(s.prompt).length});
- add('tokenize','input','官方分词与对话模板','Host','Tokenizer','两模型都得到 6 个正文 Token；官方模板关闭 thinking 后，完整输入为 18 个 Token。','tokenizer + chat_template(think=false)',s.contextIds.length+' × int32 Token ID',{level:'external',from:'HOST',to:'GPU',kind:'tokens',bytes:s.contextIds.length*4});
+ add('prompt','input','Prompt 只提交一次','用户侧 → Host 请求缓冲','UTF-8 / 接入服务','13 个 Unicode 字符编码为 39 B UTF-8 正文并进入 Host；HTTP / RPC 封装和线上时延未公开。','body = UTF8(Prompt)','Host 原文缓冲：39 B',{level:'external',from:'USER',to:'HOST',kind:'text',bytes:new TextEncoder().encode(s.prompt).length});
+ add('tokenize','input','Host 逐字片分词与模板组装','Host CPU / RAM','Tokenizer 软件','依次展示 6 个正文 Token 的字符范围、UTF-8 字节范围和 Token ID；随后加入 12 个角色 / 换行 / 生成前缀 Token。','tokenizer(prompt) → 6 IDs; chat_template → 18 input_ids',s.contextIds.length+' 个 input_ids',{level:'external',from:'HOST',to:'HOST',kind:'tokens',bytes:s.contextIds.length*4});
  if(!prefill)add('prefill','input','GPU Prefill · 建立上下文','GPU','GPU','完整输入先经过所有模型层，建立 DeltaNet 状态与 Attention KV。切换“Prefill 展开”可查看该轮的完整算子。','T='+s.contextIds.length+'；GPU 执行全部层','前缀缓存 + 首个续写位置',{kind:'prefill',from:'EMBED',to:'CACHE'});
  add('embedding','input','Token ID → Embedding 行','GPU','MEM','每个真实 ID 查找一行词嵌入；向量束显示维度与归属，不伪造权重数值。','Embedding['+c.token.id+'] ∈ R^'+D,'['+T+', '+D+']',{kind:'embedding',from:'EMBED',to:'MATRIX',bytes:T*D*2});
  if(flash)add('expand','input','扩展四路残差流','GPU','VXM','Flash-Next 将初始隐藏激活复制到四条残差流，层内通过门控读写。','repeat(x, hc_count=4)','['+T+', 4 × '+D+']',{kind:'expand',from:'MATRIX',to:'RESIDUAL',bytes:T*D*4*2});
@@ -135,5 +135,61 @@ function workflow(state){
  else round(state.mode,state.mode==='prefill');
  return out;
 }
-const api={shape,trace,workflow,cost,groups,model,configSources,implementationSources};root.NETWORK_MODEL=api;if(typeof module!=='undefined')module.exports=api;
+
+// 交互讲解用的折叠工作流：同构层只展开一个代表层，后续层由显式 Loop 节点表示。
+// 完整的逐层 workflow 保留给证据核对、导出和审计使用，不在这里改变其层数。
+function teachingGroups(modelId){
+ if(modelId==='flash')return[
+  {type:'representative',layer:1,label:'第 1 层 · DeltaNet'},
+  {type:'representative',layer:2,label:'第 2 层 · DeltaNet + PLE'},
+  {type:'representative',layer:4,label:'第 4 层 · QSA'},
+  {type:'loop',first:5,last:48,count:11,pattern:'DeltaNet ×3 → QSA',representative:1}
+ ];
+ return[
+  {type:'representative',layer:1,label:'第 1 层 · DeltaNet'},
+  {type:'loop',first:2,last:3,count:2,pattern:'DeltaNet ×2',representative:1},
+  {type:'representative',layer:4,label:'第 4 层 · Gated Attention'},
+  {type:'loop',first:5,last:64,count:15,pattern:'DeltaNet ×3 → Gated Attention',representative:1}
+ ];
+}
+function teachingLayers(modelId){
+ return teachingGroups(modelId).filter(g=>g.type==='representative').map(g=>g.layer);
+}
+function teachingLoopRow(state,mode,g){
+ const m=model(state.model),flash=state.model==='flash';
+ const range='L'+g.first+'–L'+g.last;
+ return{
+  id:'layer-loop',group:'output',title:'LOOP · '+range+' 同构层',hardware:'GPU / LPX',unit:'ICU / Scheduler',level:mode==='prefill'?'gpu':'chip',
+  from:'RESIDUAL',to:'MATRIX',kind:'loop',layer:0,
+  output:range+' · '+g.count+' 次 · '+g.pattern,
+  detail:'只在这里推进循环计数和层间状态；不重复播放已经讲解过的同构算子。每次迭代复用同一算子顺序，写回后把激活、KV 或 DeltaNet 状态交给下一层。'+(flash?' MoE 的 Router / Top-10 / 共享专家仍发生在每个循环层内。':' Dense FFN 的 Gate / Up、SiLU、Down 仍发生在每个循环层内。'),
+  formula:'for (l='+g.first+'; l<='+g.last+'; l++) { run('+g.representative+'); state←commit(l); }',
+  evidence:'模型配置 / 教学折叠',scope:'同构层循环摘要',tensorBytes:null,flops:null,
+  loop:{firstLayer:g.first,lastLayer:g.last,count:g.count,pattern:g.pattern,representativeLayer:g.representative,modelLayers:m.layers}
+ };
+}
+function teachingWorkflow(state){
+ const out=[],m=model(state.model),keepInput=new Set(['embedding','expand']),tail=new Set(['layers','finalnorm','lmhead','sample']);
+ const push=(row,phase,layer=0)=>out.push({...row,phase,layer,key:row.id==='layer-loop'?phase+'/loop/'+row.loop.firstLayer+'-'+row.loop.lastLayer:phase+'/'+layer+'/'+row.id});
+ function round(mode,receive){
+  const base={...state,mode},groups=teachingGroups(state.model);
+  for(const g of groups){
+   if(g.type==='loop'){push(teachingLoopRow(state,mode,g),mode,0);continue;}
+   const t=trace({...base,layer:g.layer});
+   if(g.layer===1){
+    if(receive)for(const id of ['prompt','tokenize'])push(t.find(r=>r.id===id),mode);
+    push({id:'schedule',group:'input',title:receive?'提交 Token ID / 调度后端':'沿用上下文 / 开始本轮',hardware:'Host',unit:'运行时',level:'external',from:'HOST',to:'GPU',path:['HOST','GPU'],kind:'submission',output:(mode==='prefill'?'18 个输入 Token ID':'1 个续写 Token ID')+' + 请求 / 位置元数据',detail:'Dynamo 负责服务层路由和协调。它不逐周期驱动 LPU，也不把 GPU 指令翻译成 LPU 指令。实际控制消息格式未公开。',formula:'请求 → 后端执行任务',evidence:'职责公开 / 消息格式未知',scope:'控制面',tensorBytes:null},mode);
+    for(const row of t.filter(r=>keepInput.has(r.id)))push(row,mode);
+   }
+   for(const row of t.filter(r=>!['prompt','tokenize','prefill','layers','finalnorm','lmhead','sample'].includes(r.id)&&!keepInput.has(r.id)))push(row,mode,g.layer);
+  }
+  const last=trace({...base,layer:m.layers});
+  for(const row of last.filter(r=>['finalnorm','lmhead'].includes(r.id)))push(row,mode);
+  push({id:'result-handoff',group:'output',title:'输出决策 / 交给响应服务',hardware:'GPU / Host',unit:'后端输出',level:'external',from:'GPU',to:'HOST',kind:'result',output:'Token ID / 输出状态；不显示伪造 logits',detail:'采样位置与输出消息编码由后端确定，公开文章没有给出。这里只表明全部层完成之后才具备输出依赖。',formula:'logits → 采样 → next_id',evidence:'参考算法 / 采样位置未知',scope:'输出交接',tensorBytes:null},mode);
+  push(last.find(r=>r.id==='sample'),mode);
+ }
+ if(state.routeMode==='request'){round('prefill',true);round('decode',false);}else round(state.mode,state.mode==='prefill');
+ return out;
+}
+const api={shape,trace,workflow,teachingWorkflow,teachingGroups,teachingLayers,cost,groups,model,configSources,implementationSources};root.NETWORK_MODEL=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
