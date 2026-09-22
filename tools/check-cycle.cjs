@@ -3,14 +3,14 @@
 const {writeReport}=require('./report.cjs');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),C=require('../cycle-model.js'),M=require('../cycle-map.js'),{fixture,Element}=require('./check-playback.cjs');
 const root=path.resolve(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),logs=[],check=(name,fn)=>{fn();logs.push(name);console.log('通过：'+name);},near=(a,b,tol=1e-6)=>assert.ok(Math.abs(a-b)<tol,`${a} ≠ ${b}`);
-check('六类微程序数值独立核对，Softmax 归一化且 RMSNorm 正确',()=>{
+check('七类微程序数值独立核对，含量化 Attention 流水',()=>{
  const expected={q:[11,-1,7,10],ffn:[11,-1,7,10],rope:[2,1,4,3],sum:[10,10,10,10],transpose:[1,3,2,4],memory:[1,2,3,4],control:[1,2,3,4]};for(const [id,out]of Object.entries(expected))assert.deepEqual(C.build(id).expected,out);
  const silu=C.build('silu').expected;[1,-2,3,-4].forEach((x,i)=>near(silu[i],x/(1+Math.exp(-x))));
  const soft=C.build('softmax').expected,z=[1,2,3,4].reduce((a,b)=>a+Math.exp(b-4),0);soft.forEach((p,i)=>near(p,Math.exp(i-3)/z));near(soft.reduce((a,b)=>a+b,0),1);
- C.build('norm').expected.forEach((v,i)=>near(v,(i+1)/Math.sqrt(7.5+1e-5)));assert.equal(new Set(C.lessons.map(l=>l.family)).size,6);
+ C.build('norm').expected.forEach((v,i)=>near(v,(i+1)/Math.sqrt(7.5+1e-5)));const qa=C.build('quant-attn');assert.equal(qa.lesson.family,'pipeline');assert.ok(qa.program.some(i=>i.op.includes('unpack_s4')));assert.ok(qa.program.some(i=>i.unit==='MXM'&&i.op.includes('Attention output')));assert.equal(new Set(C.lessons.map(l=>l.family)).size,7);
 });
 let schedules=0;
-check('810 组延迟 / 距离组合无物理 ICU 发射冲突或提前消费',()=>{for(const l of C.lessons)for(const hops of [1,3,6])for(const skew of [0,1,2])for(const read of [1,2,8])for(const vector of [1,2,8]){const m=C.build(l.id,{hops,skew,read,vector});assert.deepEqual(C.validate(m),[]);const occupied=new Set();for(const i of m.physicalProgram){const k=i.unit+':'+i.issue;assert.ok(!occupied.has(k),k);occupied.add(k);assert.equal(i.ready,i.consume+i.latency);}assert.equal(m.lastEnd,m.firstEnd+19);assert.deepEqual(C.snapshot(m,m.lastEnd,19).result,m.expected);schedules++;}});
+check('891 组延迟 / 距离组合无物理 ICU 发射冲突或提前消费',()=>{for(const l of C.lessons)for(const hops of [1,3,6])for(const skew of [0,1,2])for(const read of [1,2,8])for(const vector of [1,2,8]){const m=C.build(l.id,{hops,skew,read,vector});assert.deepEqual(C.validate(m),[]);const occupied=new Set();for(const i of m.physicalProgram){const k=i.unit+':'+i.issue;assert.ok(!occupied.has(k),k);occupied.add(k);assert.equal(i.ready,i.consume+i.latency);}assert.equal(m.lastEnd,m.firstEnd+19);assert.deepEqual(C.snapshot(m,m.lastEnd,19).result,m.expected);schedules++;}});
 check('SG4 从四个 MEM 切片错拍读出，字节平面在公共 SR 边界同拍对齐',()=>{
  const m=C.build('memory'),read=m.program.find(i=>i.kind==='read'),phys=m.physicalProgram.filter(i=>i.parent===read.id);assert.equal(phys.length,4);assert.deepEqual(phys.map(i=>i.issue),[0,1,2,3]);for(const i of phys)assert.equal(i.ready+(3-i.plane),read.ready);const first=C.snapshot(m,2);assert.equal(first.nowBytes,16);const last=C.snapshot(m,m.lastEnd);assert.equal(last.reads,20*4*16);assert.equal(last.writes,20*4*16);assert.equal(last.bytes,2560);
  const matrix=C.build('q');assert.equal(matrix.program.find(i=>i.kind==='read').planes,2);assert.equal(matrix.physicalProgram.filter(i=>i.kind==='read').length,10);assert.equal(C.snapshot(matrix,matrix.lastEnd).bytes,14*20*16);
