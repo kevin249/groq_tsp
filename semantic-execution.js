@@ -6,6 +6,17 @@ const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),mm=(x,w)=>w[0].map((_,j)=>dot(x,w
 const rms=x=>{const r=1/Math.sqrt(dot(x,x)/x.length+1e-6);return x.map(v=>v*r);};
 const sigmoid=x=>1/(1+Math.exp(-x)),silu=x=>x*sigmoid(x);
 const softmax=x=>{const e=x.map(v=>Math.exp(v-Math.max(...x))),sum=e.reduce((a,b)=>a+b,0);return e.map(v=>v/sum);};
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+function quantSym(values,bits=4){
+ const qmax=(1<<(bits-1))-1,maxAbs=Math.max(...values.map(v=>Math.abs(v)),1e-12),scale=maxAbs/qmax;
+ const q=values.map(v=>clamp(Math.round(v/scale),-qmax,qmax));
+ return{bits,qmax,scale,q,deq:q.map(v=>v*scale)};
+}
+function packSignedQ4(values){
+ const n=values.map(v=>v&15),out=[];
+ for(let i=0;i<n.length;i+=2)out.push((n[i]&15)|(((n[i+1]??0)&15)<<4));
+ return out;
+}
 const raw=[2,-1,3,1],WG=[[1,0,-2],[3,1,1],[4,-1,0],[0,2,2]],WU=[[0,1,1],[1,0,-1],[1,1,0],[2,-1,1]],WD=[[1,0,1,-1],[0,2,1,0],[1,1,0,2]];
 function ffn(x=rms(raw),wg=WG){const g=mm(x,wg),u=mm(x,WU),h=g.map((v,i)=>silu(v)*u[i]);return{x,g,u,h,y:mm(h,WD)};}
 const WQ=[[.5,0],[0,0],[0,0],[0,2]],WK=[[.5,0],[0,0],[0,0],[0,1]],WV=[[1,0],[0,0],[0,0],[0,0]];
@@ -68,6 +79,57 @@ function softmaxProgram(values=attention().scores){const p=new Program('softmax'
  let sum=0;values.forEach((v,i)=>{const e=Math.exp(v-max);sum+=e;p.objects.exp.rows[0][i]=e;p.objects.stat.rows[0][1]=sum;p.event('指数并累加分母 '+i,'VXM','e['+i+'] ← exp(score['+i+'] − m); sum += e['+i+']','exp('+num(v)+' − '+num(max)+') = '+num(e),{write:['exp['+i+']','sum'],focus:[{id:'exp',r:0,c:i,role:'write'}]});});
  values.forEach((v,i)=>{const y=p.objects.exp.rows[0][i]/sum;p.objects.p.rows[0][i]=y;p.event('归一化并写回 '+i,'VXM','p['+i+'] ← e['+i+'] / sum',num(p.objects.exp.rows[0][i])+' / '+num(sum)+' = '+num(y),{write:['p['+i+']'],focus:[{id:'p',r:0,c:i,role:'write'}],valid:i===values.length-1});});return p;}
 function kvProgram(){const a=attention(),p=new Program('kv','KV：写入新位置后，才提交可见长度','缩小 Attention 算例：已存在 2 个位置，本轮只追加第 3 个；不覆盖旧值。');p.object('k','本轮 K',[a.k]).object('v','本轮 V',[a.v]).object('K','K Cache',[...a.K.slice(0,2),[null,null]]).object('V','V Cache',[...a.V.slice(0,2),[null,null]]).object('state','提交状态',[[2,0,0]],'可见长度 / K ready / V ready');p.event('分配位置 2，旧两项仍有效','MEM','slot ← visible_length','visible_length = 2',{valid:false});p.objects.K.rows[2]=a.k;p.objects.state.rows[0][1]=1;p.event('只写入新 K','MEM','K[2,:] ← k','K ready=1，V ready=0；可见长度仍为 2',{write:['K[2,:]'],focus:a.k.map((_,i)=>({id:'K',r:2,c:i,role:'write'}))});p.objects.V.rows[2]=a.v;p.objects.state.rows[0][2]=1;p.event('写入新 V','MEM','V[2,:] ← v','两份数据均到达，尚未提交新长度',{write:['V[2,:]'],focus:a.v.map((_,i)=>({id:'V',r:2,c:i,role:'write'}))});p.objects.state.rows[0][0]=3;p.event('提交新位置，后续 QK / PV 可访问','MEM','visible_length ← 3','新位置仅在 K / V 都就绪后对后续操作可见',{valid:true,write:['visible_length'],focus:[{id:'state',r:0,c:0,role:'write'}]});return p;}
+function weightDequantProgram(){
+ const source=[3,-2,7,1],scale=.25,deq=source.map(v=>v*scale),packed=packSignedQ4(source);
+ const p=new Program('quant','Q4 权重：MEM 压缩存储 → SXM 解包 → VXM 反量化 → MXM','第一代 TSP 的公开 MXM 路径按 FP16 / INT8 输入建模；Q4/FP4 不标成原生 MAC。压缩权重只在 MEM 中驻留，展开后的 FP16 作为流直接送往 MXM，不写回 SRAM。');
+ p.object('packed','MEM · packed Q4 bytes',[packed.map(v=>'0x'+v.toString(16).padStart(2,'0'))],'两个 signed Q4 / byte')
+  .object('meta','量化元数据',[[4,scale,0]],'bits / scale / zero-point')
+  .object('codes','SXM · unpack 后 signed code',[Array(source.length).fill(null)])
+  .object('fp','VXM · dequant FP16 stream',[Array(source.length).fill(null)])
+  .object('sink','MXM 输入状态',[[0,'等待权重流']],'ready / status');
+ p.event('读取 packed Q4 与 scale','MEM','read(weight_q4, scale)','压缩权重保持 Q4；此时没有完整 FP16 权重副本',{read:['packed','scale']});
+ p.objects.codes.rows=[source];
+ p.event('拆 nibble 并恢复 signed code','SXM','unpack_s4(bytes) → q4 lanes','只改变布局/编码，不执行矩阵乘',{read:['packed'],write:['q4 lanes'],focus:source.map((_,i)=>({id:'codes',r:0,c:i,role:'write'}))});
+ p.objects.fp.rows=[deq];
+ p.event('按 scale 流式反量化','VXM','w_fp16 ← q4 × scale','dequant 结果直接进入流寄存器；不写回 MEM',{read:['q4 lanes','scale'],write:['FP16 stream'],focus:deq.map((_,i)=>({id:'fp',r:0,c:i,role:'write'}))});
+ p.objects.sink.rows=[[1,'LW / IW 可消费']];
+ p.event('MXM 捕获展开后的权重流','MXM','LW(weight_stream) → IW','Q4/FP4 原生 MAC 未公开；本路径在 MXM 前恢复为公开支持的计算精度',{read:['FP16 stream'],write:['MXM weight buffer'],focus:[{id:'sink',r:0,c:0,role:'write'},{id:'sink',r:0,c:1,role:'write'}],valid:true});
+ return p;
+}
+function kvQuantProgram(){
+ const a=attention(),kq=quantSym(a.k,4),vq=quantSym(a.v,4),kp=packSignedQ4(kq.q),vp=packSignedQ4(vq.q);
+ const p=new Program('kv-quant','RoPE 后 K / 原始 V：VXM 量化 → SXM pack → MEM KV Cache','K 先完成 QK Norm / RoPE，再量化写入缓存；V 不做 RoPE。每组 scale 与 packed payload 一起保存。');
+ p.object('k','RoPE 后 K',[a.k]).object('v','V',[a.v])
+  .object('q','VXM · Q4 codes',[Array(a.k.length).fill(null),Array(a.v.length).fill(null)],'row0=K / row1=V')
+  .object('scale','量化 scale',[[kq.scale,vq.scale]],'K scale / V scale')
+  .object('packed','SXM · packed bytes',[[null],[null]],'row0=K / row1=V')
+  .object('cache','MEM · KV slot',[[null,null,0]],'K payload / V payload / committed');
+ p.objects.q.rows=[kq.q,vq.q];
+ p.event('为 K / V 分别求 scale 并舍入','VXM','q ← clamp(round(x / scale))','K 已经 RoPE；V 直接量化',{read:['K_rot','V'],write:['Q4 codes','scale'],focus:[{id:'scale',r:0,c:0,role:'write'},{id:'scale',r:0,c:1,role:'write'}]});
+ p.objects.packed.rows=[[...kp],[...vp]];
+ p.event('将 signed Q4 打包为 byte stream','SXM','pack_s4(q)','两个 4-bit code 合成一个 byte；scale 不打包进数值 payload',{read:['Q4 codes'],write:['packed bytes']});
+ p.objects.cache.rows=[[kp.map(v=>'0x'+v.toString(16).padStart(2,'0')).join(' '),vp.map(v=>'0x'+v.toString(16).padStart(2,'0')).join(' '),0]];
+ p.event('写入当前 KV slot 与量化元数据','MEM','KV[pos] ← {payload, scale}','旧 KV 不覆盖；visible_length 尚未推进',{read:['packed bytes','scale'],write:['KV slot']});
+ p.objects.cache.rows[0][2]=1;
+ p.event('提交 slot，对后续 QK / PV 可见','MEM','commit(pos); visible_length++','只有 K/V payload 与 scale 均完成后才提交',{write:['committed'],focus:[{id:'cache',r:0,c:2,role:'write'}],valid:true});
+ return p;
+}
+function kvDequantProgram(){
+ const a=attention(),kq=quantSym(a.k,4),vq=quantSym(a.v,4),kp=packSignedQ4(kq.q),vp=packSignedQ4(vq.q);
+ const p=new Program('kv-dequant','KV Cache：MEM 读 compressed → SXM unpack/layout → VXM dequant → MXM','Decode 不生成完整 FP16 KV 临时张量回写 SRAM；历史 KV 按 tile 解包、反量化后直接作为 QK / PV 的输入流。');
+ p.object('cache','MEM · packed KV',[[kp.map(v=>'0x'+v.toString(16).padStart(2,'0')),kq.scale],[vp.map(v=>'0x'+v.toString(16).padStart(2,'0')),vq.scale]],'payload / scale')
+  .object('codes','SXM · unpack / K-layout',[Array(a.k.length).fill(null),Array(a.v.length).fill(null)],'row0=K / row1=V')
+  .object('fp','VXM · FP16 stream',[Array(a.k.length).fill(null),Array(a.v.length).fill(null)])
+  .object('sink','MXM consumer',[[0,0]],'QK ready / PV ready');
+ p.event('按 tile 读取 packed K/V 与 scale','MEM','read(KV_tile, scale)','带宽按压缩位宽计；不先展开整段历史',{read:['KV Cache']});
+ p.objects.codes.rows=[kq.q,vq.q];
+ p.event('解包并完成 Kᵀ / head 布局','SXM','unpack_s4 + permute(K)','SXM 只处理编码和位置；V 保持对应 head 顺序',{read:['packed payload'],write:['q4 lanes / K layout']});
+ p.objects.fp.rows=[kq.deq,vq.deq];
+ p.event('反量化为计算输入流','VXM','x_fp16 ← q4 × scale','展开值只存在于流/操作数路径，不写回 MEM',{read:['q4 lanes','scale'],write:['FP16 stream']});
+ p.objects.sink.rows=[[1,1]];
+ p.event('QK / PV 可以直接消费该 tile','MXM','QK ← Q × Kᵀ; PV ← P × V','真实执行时 K 与 V 在各自依赖满足后分别流入对应 MXM 操作',{read:['K FP16 stream','V FP16 stream'],write:['QK ready','PV ready'],focus:[{id:'sink',r:0,c:0,role:'write'},{id:'sink',r:0,c:1,role:'write'}],valid:true});
+ return p;
+}
 function transferProgram(step,c){
  const p=new Program('transfer','传输：分段接收 → 完整负载 → 允许消费','8 B 小端 BF16 / 每段 4 B；valid / ready 和逐跳收齐再转发均为逻辑算例，不代表实际网络协议。');
  const buf=new ArrayBuffer(4),v=new DataView(buf),bytes=[];for(const n of raw){v.setFloat32(0,n,true);const bits=v.getUint32(0,true)>>>16;bytes.push(bits&255,bits>>>8);}
@@ -120,6 +182,9 @@ function loopProgram(step){
  }
  if(id==='attnnorm'||id==='ffnread'&&!c.flash||id==='finalnorm'&&!c.flash)return normProgram(step.title);
  if(id==='softmax')return softmaxProgram();
+ if(id==='weight-dequant')return weightDequantProgram();
+ if(id==='kv-quant')return kvQuantProgram();
+ if(id==='kv-dequant')return kvDequantProgram();
  if(id==='kv')return kvProgram();
  if(id==='silu'){p=new Program('vector','SwiGLU：与前一步同一组 Gate / Up','4 → 3 → 4 的连贯 FFN 数值算例；逐元素写回，不用移动粒子代表运算。');p.object('g','Gate 结果',[f.g]).object('u','Up 结果',[f.u]).object('act','SiLU(g)',[f.g.map(()=>null)]).object('h','h = SiLU(g) × u',[f.g.map(()=>null)]);f.g.forEach((v,i)=>{p.objects.act.rows[0][i]=silu(v);p.event('元素 '+i+'：SiLU','VXM','a['+i+'] ← g['+i+'] / (1 + exp(−g['+i+']))','SiLU('+num(v)+') = '+num(silu(v)),{read:['g['+i+']'],write:['act['+i+']'],focus:[{id:'g',r:0,c:i,role:'read'},{id:'act',r:0,c:i,role:'write'}]});p.objects.h.rows[0][i]=f.h[i];p.event('元素 '+i+'：门控乘法并写回','VXM','h['+i+'] ← a['+i+'] × u['+i+']',num(silu(v))+' × '+num(f.u[i])+' = '+num(f.h[i]),{write:['h['+i+']'],focus:[{id:'u',r:0,c:i,role:'read'},{id:'h',r:0,c:i,role:'write'}],valid:i===f.h.length-1});});return p;}
  if(id==='rope'){p=new Program('rope','QK RMSNorm 与二维 RoPE 算例','与本页 QKV / QK 算例相连；选 θ=π/2 展开一对旋转，真实模型只旋转头内前 64 维。');p.object('q','Q',[a.qr]).object('k','K',[a.kr]).object('rot','旋转后的 Q / K',[[null,null],[null,null]]);p.event('Q/K 尚未归一化','MEM','读取投影结果','V 不参与 QK Norm / RoPE',{read:['Q','K']});p.objects.q.rows=[a.qn];p.objects.k.rows=[a.kn];p.event('Q/K 分别按头归一化','VXM','Q ← RMSNorm(Q); K ← RMSNorm(K)','先归一化，再应用位置旋转',{write:['Q','K']});p.objects.rot.rows[0]=a.q;p.event('旋转 Q 的一对元素','VXM','[q0,q1] → [−q1,q0]','cos(π/2)=0；sin(π/2)=1',{write:['Q_rot'],focus:[{id:'rot',r:0,c:0,role:'write'},{id:'rot',r:0,c:1,role:'write'}]});p.objects.rot.rows[1]=a.k;p.event('旋转 K，输出就绪','VXM','[k0,k1] → [−k1,k0]','下一步仅把新的 K/V 写入缓存',{write:['K_rot'],valid:true});return p;}
@@ -141,6 +206,6 @@ function loopProgram(step){
  p.objects.ready.rows=[[1,'已写回 / 下游可消费']];p.event('写回并提交结果有效',step.to,'output_ready ← 1',spec[2][1],{write:['output'],focus:[{id:'deps',r:2,c:1,role:'write'},{id:'ready',r:0,c:0,role:'write'}],valid:true});return p;
 }
 function build(step,c,state){const p=semanticProgram(step,c,state);p.events.forEach((e,i)=>{e.valid=!!e.valid&&i===p.events.length-1;});return p;}
-const api={build,num,ffn,attention,mm,rms,softmax,silu,fixtures:{raw,WG,WU,WD}};
+const api={build,num,ffn,attention,mm,rms,softmax,silu,quantSym,packSignedQ4,fixtures:{raw,WG,WU,WD}};
 root.SEMANTIC_EXECUTION=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
