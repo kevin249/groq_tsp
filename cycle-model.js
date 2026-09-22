@@ -5,6 +5,7 @@
  const units=['MEM_A','MEM_B','MXM','SXM','VXM'];
  const lessons=[
   {id:'q',family:'matrix',name:'Q / K / V 投影',formula:'Y = XW',note:'投影的 1×4 乘 4×4 数值窗口；Q 头是输出张量的分组，乘加在 MXM 内。'},
+  {id:'quant-attn',family:'pipeline',name:'量化 Attention · Q4 权重 / Q4 KV',formula:'MEM(Q4) → SXM unpack → VXM dequant → MXM → KV quant/cache → QK → Softmax → PV',note:'第一代 TSP 教学路径：Q4/FP4 不假设为 MXM 原生 MAC；压缩权重和 KV 在 MEM 中驻留，SXM/VXM 流式展开后直接送入 MXM，不生成完整 FP16 SRAM 副本。'},
   {id:'ffn',family:'matrix',name:'FFN · Gate / Up / Down',formula:'Gate = XWg；Up = XWu；Down = HWd',note:'三次矩阵乘的形状不同，复用同一种 MXM 内核。这里观察其中一个 4×4 窗口。'},
   {id:'rope',family:'vector',name:'RoPE · 成对旋转',formula:'(a,b) → (−b,a)，θ = π/2',note:'SXM 交换相邻元素，VXM 乘符号；固定角度便于核对每个值。'},
   {id:'silu',family:'vector',name:'SiLU · FFN 激活',formula:'SiLU(x) = x / (1 + exp(−x))',note:'展开为负号、指数、加一、倒数和乘法；每个中间向量显式写入 SRAM。'},
@@ -16,6 +17,8 @@
   {id:'control',family:'control',name:'ICU · Sync / Notify',formula:'Sync → Notify → 后续 Read',note:'一个 ICU 等待通知，另一个 ICU 在预定周期通知；演示静态计划，未加入动态 scoreboard。'}
  ];
  const f=Math.fround,vec=a=>a.map(f),copy=a=>a.slice(),fmt=v=>!Number.isFinite(v)?String(v):Number(v.toPrecision(5)).toString();
+ const packQ4=a=>{const n=a.map(v=>v&15),o=[];for(let i=0;i<n.length;i+=2)o.push((n[i]&15)|(((n[i+1]??0)&15)<<4));return o;};
+ const unpackQ4=(a,count=4)=>{const o=[];for(const b of a){for(const n of [b&15,(b>>>4)&15]){const v=n&8?n-16:n;o.push(v);if(o.length===count)return o;}}return o;};
  function parameters(raw={}){const p={...defaults,...raw};for(const [k,v]of Object.entries(p)){if(!Number.isFinite(Number(v)))throw Error(k+' 必须是有限数值');p[k]=Number(v);}if(p.ghz<.1||p.ghz>3)throw Error('时钟范围为 0.1—3 GHz');for(const k of ['hops','read','write','vector','shuffle','install','matrix','skew']){if(!Number.isInteger(p[k]))throw Error('周期参数必须为整数');}if(p.hops<1||p.hops>6)throw Error('寄存器距离范围为 1—6 跳');if(p.skew<0||p.skew>2)throw Error('d_skew 范围为 0—2 拍');for(const k of ['read','write','vector','shuffle','install'])if(p[k]<1||p[k]>8)throw Error('功能延迟范围为 1—8 拍');if(p.matrix<4||p.matrix>16)throw Error('四项 MAC 窗口的示例延迟范围为 4—16 拍');return p;}
  function build(key='q',raw={}){
   const p=parameters(raw),lesson=lessons.find(x=>x.id===key);if(!lesson)throw Error('未知逐周期课程');
@@ -54,6 +57,27 @@
    const compute=instruction('MXM','ABC · 启动阵列',runIssue,p.skew,p.matrix,acc,{kind:'matrix',inputs:[{label:'X',values:x,location:'激活缓冲'},{label:'W[4×4]',values:W.flat(),location:'已安装阵列'}],deps:[{id:capture.id,arrival:capture.ready},{id:iw.id,arrival:iw.ready}],partial,weights:W,outputLabel:'阵列部分和'});
    stageName='ACC 输出 FP32 结果';const accIssue=Math.max(runIssue+1,compute.ready-p.skew),accumulate=instruction('MXM','ACC · 结果累加',accIssue,p.skew,1,acc,{kind:'acc',inputs:[{label:'阵列结果',values:acc,location:'累加寄存器'}],deps:[{id:compute.id,arrival:compute.ready}],outputLabel:'Y'});const resultRoute=transfer(accumulate,'Y','MEM_B');const w=write(resultRoute,output);result=output;ready=w.ready+1;
    stages.push({name:'权重预装与激活对齐',start:0,end:iw.ready,unit:'MXM',instruction:iw.id,values:[]},{name:'四项 MAC / ACC',start:runConsume,end:w.ready,unit:'MXM',instruction:compute.id,values:acc});
+  }else if(key==='quant-attn'){
+   const q4Scale=.25,weightCodes=slot('MEM_B','Wq · signed Q4 codes',[3,-2,7,1],16);
+   stageName='Q4 权重流式展开';
+   const unpackW=operation('Q4 weight unpack','SXM',[weightCodes],v=>v.slice(),'unpack_s4 · 不改变数值 code',p.shuffle);
+   const weightFp=operation('Q4 weight dequant','VXM',[unpackW],v=>v.map(a=>f(a*q4Scale)),'Mul weight_scale=0.25 · FP16 stream',p.vector);
+   const proj=operation('缩小 Q/K/V 投影窗口','MXM',[input,weightFp],(x,w)=>x.map((v,i)=>f(v*w[i])),'MXM MAC · 展开后的权重直接消费',p.matrix);
+   const kRot=operation('RoPE 后 K','VXM',[proj],v=>[f(-v[1]),f(v[0]),f(-v[3]),f(v[2])],'pair rotate · K 先 RoPE 再进 KV Cache',p.vector);
+   const kCodes=operation('K → Q4 codes','VXM',[kRot],v=>v.map(a=>Math.max(-7,Math.min(7,Math.round(a/q4Scale)))),'round(K / 0.25) + clamp',p.vector);
+   const kPacked=operation('K cache pack','SXM',[kCodes],v=>packQ4(v),'pack_s4 · 2 codes / byte',p.shuffle);
+   const kRead=operation('K cache unpack + layout','SXM',[kPacked],v=>unpackQ4(v,4),'unpack_s4 + Kᵀ layout',p.shuffle);
+   const kDeq=operation('K cache dequant stream','VXM',[kRead],v=>v.map(a=>f(a*q4Scale)),'Mul K_scale=0.25 · 不回写完整 FP16 KV',p.vector);
+   const scores=operation('Q × Kᵀ','MXM',[input,kDeq],(q,k)=>q.map((v,i)=>f(v*k[i])),'缩小 1-D head：scoreᵢ = qᵢ × kᵢ',p.matrix);
+   const max=reduction(scores,Math.max,'Max'),sub=binary('score 减最大值',scores,max,(a,b)=>f(a-b),'Sub'),ex=unary('Softmax 指数',sub,a=>f(Math.exp(a)),'Exp'),z=reduction(ex,(a,b)=>f(a+b),'Add'),inv=unary('Softmax 分母倒数',z,a=>f(1/a),'1 / x〔表达式〕'),prob=binary('Softmax 概率',ex,inv,(a,b)=>f(a*b),'Mul');
+   const vCodes=slot('MEM_A','V cache · signed Q4 codes',[1,-2,3,4],96);
+   stageName='V Cache 读取与流式展开';
+   const vPacked=operation('V cache pack 示例','SXM',[vCodes],v=>packQ4(v),'pack_s4 · MEM 中实际保存 packed payload',p.shuffle);
+   const vRead=operation('V cache unpack','SXM',[vPacked],v=>unpackQ4(v,4),'unpack_s4',p.shuffle);
+   const vDeq=operation('V cache dequant stream','VXM',[vRead],v=>v.map(a=>f(a*q4Scale)),'Mul V_scale=0.25 · 直接流向 PV',p.vector);
+   const pLocal=mirrorToA(prob);
+   result=operation('P × V · Attention output','MXM',[pLocal,vDeq],(pv,v)=>{const y=f(pv.reduce((sum,a,i)=>sum+a*v[i],0));return[y,y,y,y];},'PV dot / ACC → Attention output',p.matrix);
+   stages.push({name:'量化 Attention 完成',start:0,end:ready-1,unit:'MXM / VXM / SXM',instruction:result.writer,values:copy(result.values)});
   }else if(key==='rope'){
    const swapped=permute('相邻维度交换',input,[1,0,3,2]);result=operation('旋转符号','VXM',[swapped],v=>v.map((a,i)=>i%2?a:-a),'Mul [−1,1,−1,1]',p.vector);
   }else if(key==='silu'){
@@ -72,7 +96,7 @@
   output.values=copy(result.values);output.alias=result.id;const end=program.find(i=>i.id===result.writer)?.ready??ready-1;
   program.sort((a,b)=>a.issue-b.issue||units.indexOf(a.unit)-units.indexOf(b.unit));
   const physicalProgram=program.flatMap(i=>['read','write'].includes(i.kind)?Array.from({length:i.planes},(_,plane)=>({id:i.id+'p'+plane,parent:i.id,unit:i.unit+plane,plane,op:(i.kind==='read'?'Read':'Write')+' a'+i.address+', 字节流 '+plane,issue:i.issue+plane,consume:i.consume+plane,ready:i.consume+plane+i.func,latency:i.func,kind:i.kind})):['MEM_A','MEM_B'].includes(i.unit)?Array.from({length:4},(_,plane)=>({...i,id:i.id+'p'+plane,parent:i.id,unit:i.unit+plane,plane})): [{...i,parent:i.id}] );
-  const model={version:9,kind:'逐周期示例计划，非真实编译器 trace',p,lesson,program,physicalProgram,routes,memory,stages,input:copy(x),expected:copy(result.values),output:result.id,firstEnd:end,lastEnd:end+19,superlanes:20,units:copy(units),dtype:lesson.family==='matrix'?'FP16 输入 SG2 / FP32 输出 SG4 · 显示前 4 / 16 lane':'FP32 的 SG4 字节流 · 显示前 4 / 16 lane',scope:'每个 SL 显示 16 个逻辑 lane 中的前 4 项，其余 lane 后续数值不模拟、不参加四项归约；20 个 SL 独立重复此例，不等于完整 Q 头。'};
+  const model={version:9,kind:'逐周期示例计划，非真实编译器 trace',p,lesson,program,physicalProgram,routes,memory,stages,input:copy(x),expected:copy(result.values),output:result.id,firstEnd:end,lastEnd:end+19,superlanes:20,units:copy(units),dtype:lesson.family==='matrix'?'FP16 输入 SG2 / FP32 输出 SG4 · 显示前 4 / 16 lane':lesson.family==='pipeline'?'Q4 packed MEM → FP16 stream / FP32 ACC · 量化 Attention 教学路径':'FP32 的 SG4 字节流 · 显示前 4 / 16 lane',scope:'每个 SL 显示 16 个逻辑 lane 中的前 4 项，其余 lane 后续数值不模拟、不参加四项归约；20 个 SL 独立重复此例，不等于完整 Q 头。'};
   const violations=validate(model);if(violations.length)throw Error(violations.join('；'));return model;
  }
  function validate(m){const errors=[],byId=Object.fromEntries(m.program.map(i=>[i.id,i])),slots=new Set();for(const i of m.physicalProgram){const slot=i.unit+':'+i.issue;if(slots.has(slot))errors.push('同 ICU 同拍冲突 '+slot);slots.add(slot);}for(const i of m.program){for(const d of i.deps){const producer=byId[d.id];if(!producer||d.arrival<producer.ready||i.consume<d.arrival)errors.push('操作数未就绪 '+i.id);const input=i.inputs.find(x=>x.route&&m.routes.find(r=>r.id===x.route)?.producer===d.id);if(input&&i.consume!==d.arrival)errors.push('流已离开消费位置 '+i.id);}if(i.kind==='read'){const mem=m.memory.find(x=>x.id===i.memory);if(mem.writer&&byId[mem.writer].ready>i.consume)errors.push('SRAM 尚未写回 '+i.id);}}return errors;}
